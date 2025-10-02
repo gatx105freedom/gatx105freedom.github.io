@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Micro:bit 自動調光模擬器</title>
+    <!-- 載入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 設定 Inter 字體，使用深色背景以模擬夜間或暗處，並讓 LED 發光效果更明顯 */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1f2937; 
+            color: #e5e7eb;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* LED 視覺化樣式 */
+        #led-output {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            background-color: #ffcc00; /* 基礎顏色: 黃色 */
+            transition: box-shadow 0.3s ease-out, opacity 0.3s ease-out;
+            border: 5px solid #ffaa00;
+        }
+
+        /* 範圍輸入條樣式調整 (確保在深色背景下可見) */
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 8px;
+            background: #4b5563;
+            border-radius: 4px;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #3b82f6; /* 藍色拇指 */
+            cursor: pointer;
+            border: 3px solid #bfdbfe;
+            box-shadow: 0 0 5px rgba(59, 130, 246, 0.5);
+        }
+        
+        /* 新增：手部視覺化樣式 */
+        .sensor-visual {
+            position: relative;
+            height: 100px; 
+            overflow: hidden; /* 確保手部在 L=0 時看不見 */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        .sensor-base {
+            z-index: 1;
+            /* 讓燈泡在中央 */
+        }
+        .hand-overlay {
+            position: absolute;
+            z-index: 2;
+            left: 50%;
+            /* 初始 transform 將由 JS 設定 */
+            transition: transform 0.3s ease-out; 
+            line-height: 1; /* 調整行高讓 emoji 居中 */
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id="app" class="p-8 md:p-12 bg-gray-800 rounded-2xl shadow-2xl max-w-4xl w-full">
+        <header class="text-center mb-10">
+            <h1 class="text-3xl sm:text-4xl font-extrabold text-yellow-400 tracking-tight">
+                Micro:bit 反向控制感應燈模擬
+            </h1>
+            <p class="text-lg text-gray-400 mt-3">
+                透過調整環境光線，觀察 LED 亮度的自動反向變化。
+            </p>
+        </header>
+
+        <div class="flex flex-col lg:flex-row gap-10">
+            <!-- 左側: 輸入與邏輯 -->
+            <div class="lg:w-1/2 space-y-8 p-4 bg-gray-700 rounded-xl">
+                
+                <h2 class="2xl font-semibold text-white border-b border-gray-600 pb-3">輸入：模擬光線感測器</h2>
+
+                <!-- 新增：圖像化顯示 (手部覆蓋) -->
+                <div class="sensor-visual rounded-lg bg-gray-900 shadow-inner">
+                    <!-- 感測器底座 (Micro:bit 上 LED 螢幕兼具感測器功能) -->
+                    <div class="sensor-base text-6xl">💡</div>
+                    <!-- 手部覆蓋 -->
+                    <div id="hand-overlay" class="hand-overlay text-7xl">✋</div>
+                </div>
+
+                <!-- 1. 光線感測器輸入 -->
+                <div>
+                    <label for="lightSensor" class="block text-xl font-medium mb-2">
+                        環境光線強度 (0-255): <span id="light-value" class="text-yellow-400 font-bold">128</span>
+                    </label>
+                    <input type="range" id="lightSensor" min="0" max="255" value="128" step="1" oninput="updateSimulation(this.value)">
+                    <div class="flex justify-between text-sm mt-1 text-gray-400">
+                        <!-- 邏輯反轉後的標籤：0 (暗) -> 手覆蓋 (模擬感測器讀數低)；255 (亮) -> 手移開 (模擬感測器讀數高) -->
+                        <span>0 (極暗，手覆蓋/中央)</span>
+                        <span>255 (極亮，手移開/不可見)</span>
+                    </div>
+                </div>
+
+                <!-- 2. 程式邏輯 (流程圖/提示區塊) -->
+                <h2 class="text-2xl font-semibold text-white border-b border-gray-600 pb-3 mt-8">MakeCode 邏輯模擬</h2>
+                <div class="bg-gray-900 p-4 rounded-lg text-lg">
+                    <p class="mb-2 text-yellow-300 font-mono">
+                        // 我們的目標是反向控制：光線強，LED 暗
+                    </p>
+                    <div class="font-mono bg-blue-900 p-3 rounded-md shadow-lg">
+                        <p class="text-blue-200">當永遠執行時:</p>
+                        <p class="ml-4 text-white">
+                            <span class="text-green-400">設定 LED 亮度</span> 
+                            = 255 - (<span class="text-red-400">光線感測器數值</span>)
+                        </p>
+                        <p class="text-blue-200">
+                            <span class="text-green-400">LED 亮度</span> 範圍: 0 ~ 255
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右側: 輸出與視覺化 -->
+            <div class="lg:w-1/2 space-y-8 p-4 bg-gray-700 rounded-xl flex flex-col items-center justify-center">
+                
+                <h2 class="text-2xl font-semibold text-white border-b border-gray-600 pb-3 w-full text-center">輸出：LED 亮度控制</h2>
+
+                <!-- 3. LED 亮度數值輸出 -->
+                <div class="text-center">
+                    <p class="text-xl text-gray-400">
+                        計算出的 LED 亮度 (0-255):
+                    </p>
+                    <!-- 新增計算公式顯示 -->
+                    <p id="calculation-display" class="text-2xl font-bold text-blue-400 mt-2 mb-4"></p>
+                    <p id="brightness-value" class="text-6xl font-extrabold text-pink-400 mt-2">127</p>
+                </div>
+                
+                <!-- 4. 視覺化 LED -->
+                <div id="led-output" class="shadow-2xl">
+                    <!-- 模擬 LED 燈 -->
+                </div>
+
+                <p class="text-sm text-gray-400 mt-4 text-center">
+                    **提示:** 當環境光值為 0 時，LED 亮度為 255 (最亮)。當環境光值為 255 時，LED 亮度為 0 (最暗)。
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * 根據光線感測器數值更新 LED 亮度模擬
+         * @param {string} lightValueStr - 光線感測器讀取的數值 (0-255)
+         */
+        function updateSimulation(lightValueStr) {
+            const lightValue = parseInt(lightValueStr, 10);
+            
+            // 1. 執行反向控制邏輯 (255 - 輸入值)
+            const brightness = 255 - lightValue;
+
+            // 2. 更新數值顯示
+            document.getElementById('light-value').textContent = lightValue;
+            document.getElementById('brightness-value').textContent = brightness;
+            
+            // 顯式展示計算公式 (新增部分)
+            const calculationDisplayElement = document.getElementById('calculation-display');
+            calculationDisplayElement.textContent = `LED 亮度 = 255 - ${lightValue} = ${brightness}`;
+
+            
+            // 3. 更新 LED 視覺化
+            const ledElement = document.getElementById('led-output');
+
+            // a) 計算 LED 的光暈強度
+            // 將 brightness (0-255) 轉換為一個相對強度，並確保即使是 0 也不完全消失
+            
+            // 基礎發光強度 (從 0 到 150 像素擴散)
+            const shadowSpread = (brightness / 255) * 150;
+            
+            // 基礎顏色 (FFCC00)
+            const colorR = 255;
+            const colorG = 204;
+            const colorB = 0;
+            
+            // 根據亮度調整顏色的透明度 (alpha)
+            const alpha = brightness / 255; 
+            
+            // 設置發光顏色，使其在亮度高時更濃郁
+            const glowColor = `rgba(${colorR}, ${colorG}, ${colorB}, ${alpha * 0.8})`;
+            
+            // 設置內陰影，模擬 LED 本身在亮起時的柔和光芒
+            const innerShadow = `inset 0 0 15px rgba(255, 255, 255, ${alpha * 0.7})`;
+
+            // 設置外發光 (使用多層陰影使光暈更柔和)
+            const outerShadow = `0 0 ${shadowSpread}px ${glowColor}, 0 0 ${shadowSpread / 2}px ${glowColor}`;
+
+            // 應用樣式
+            ledElement.style.boxShadow = `${innerShadow}, ${outerShadow}`;
+            ledElement.style.opacity = 0.5 + (alpha * 0.5); // 確保在極暗時仍有微弱可見度
+
+
+            // 4. 更新手部視覺化
+            const handElement = document.getElementById('hand-overlay');
+            
+            // *** 調整後的數值：反轉手部邏輯 ***
+            // L=0 (極暗/手蓋住) 時的目標 Y 座標 (手部完全覆蓋感測器)
+            const coveringPosition = 0; 
+            
+            // L=255 (極亮/手移開) 時的目標 Y 座標 (手部完全移開/隱藏於下方)
+            const uncoveredPosition = 100; 
+            
+            // 總移動距離: 100px - 0px = 100px
+            const totalMoveDistance = uncoveredPosition - coveringPosition; 
+
+            // 計算當前數值下，手部向下移動了多少量 (L=0 時為 0, L=255 時為 100)
+            // L=0: moveDownAmount = 0 (在 0px) -> 覆蓋
+            // L=255: moveDownAmount = 100 (在 100px) -> 移開/隱藏
+            const moveDownAmount = (lightValue / 255) * totalMoveDistance;
+
+            // 最終的 Y 座標
+            const finalYPosition = coveringPosition + moveDownAmount; 
+
+            handElement.style.transform = `translateX(-50%) translateY(${finalYPosition}px)`;
+        }
+
+        // 頁面載入完成後初始化模擬
+        document.addEventListener('DOMContentLoaded', () => {
+            // 初始化時使用預設值 128
+            updateSimulation(128); 
+        });
+
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Micro:bit V1 功能互動導覽</title>
+    <!-- 載入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 設定 Inter 字體 */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7fafc; /* 淺灰色背景 */
+        }
+        /* 定義功能清單項目的動畫效果 */
+        .feature-item {
+            cursor: pointer;
+            transition: background-color 0.2s, box-shadow 0.2s, transform 0.2s;
+        }
+        .feature-item:hover {
+            background-color: #f0f4f8; /* 懸停時顏色變深 */
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+        }
+        .feature-description {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-in-out, padding 0.5s ease-in-out;
+            padding-top: 0;
+            padding-bottom: 0;
+        }
+        .feature-description.open {
+            max-height: 200px; /* 設置一個足夠大的值 */
+            padding-top: 0.5rem;
+            padding-bottom: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app" class="min-h-screen p-4 md:p-8">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-extrabold text-blue-800 tracking-tight">
+                BBC Micro:bit V1 功能總覽
+            </h1>
+            <p class="text-xl text-gray-600 mt-2">點擊功能名稱以查看詳細簡介</p>
+            <div class="h-1 bg-blue-400 w-24 mx-auto rounded-full mt-3"></div>
+        </header>
+
+        <!-- 主要內容區塊：兩欄佈局 -->
+        <!-- 確保 sticky 定位不會被 items-stretch 破壞 -->
+        <div class="flex flex-col lg:flex-row lg:items-start gap-8 max-w-7xl mx-auto">
+
+            <!-- 左側：圖片區 (黏性定位) -->
+            <div class="lg:w-1/2 lg:sticky lg:top-8 space-y-6">
+                
+                <!-- 正面圖片 -->
+                <div class="bg-white p-4 rounded-xl shadow-lg border border-gray-200">
+                    <h2 class="text-2xl font-semibold mb-3 text-blue-700">Micro:bit V1 正面</h2>
+                    <!-- 修正: 移除 aspect-square，讓容器高度由圖片原始比例決定 -->
+                    <div class="w-full bg-gray-300 rounded-lg flex items-center justify-center overflow-hidden">
+                        <!-- 佔位圖片 (請替換為實際圖片 URL) -->
+                        <img src="microbit_Front.png" 
+                             alt="Micro:bit V1 正面示意圖" 
+                             class="w-full h-auto object-cover"
+                             onerror="this.onerror=null; this.src='https://placehold.co/400x300/4c51bf/ffffff?text=正面圖片佔位 (原比例)';">
+                    </div>
+                    <p class="text-sm text-gray-500 mt-2 text-center">（請將此處替換為 Micro:bit V1 正面圖片）</p>
+                </div>
+
+                <!-- 背面圖片 -->
+                <div class="bg-white p-4 rounded-xl shadow-lg border border-gray-200">
+                    <h2 class="text-2xl font-semibold mb-3 text-blue-700">Micro:bit V1 背面</h2>
+                    <!-- 修正: 移除 aspect-square，讓容器高度由圖片原始比例決定 -->
+                    <div class="w-full bg-gray-300 rounded-lg flex items-center justify-center overflow-hidden">
+                        <!-- 佔位圖片 (請替換為實際圖片 URL) -->
+                         <img src="microbit_Back.png" 
+                             alt="Micro:bit V1 背面示意圖" 
+                             class="w-full h-auto object-cover"
+                             onerror="this.onerror=null; this.src='https://placehold.co/400x300/10b981/ffffff?text=背面圖片佔位 (原比例)';">
+                    </div>
+                    <p class="text-sm text-gray-500 mt-2 text-center">（請將此處替換為 Micro:bit V1 背面圖片）</p>
+                </div>
+            </div>
+
+            <!-- 右側：功能清單區 -->
+            <div class="lg:w-1/2 space-y-6">
+                <!-- 正面功能清單 -->
+                <div class="bg-white p-6 rounded-xl shadow-2xl">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2 border-blue-200">
+                        <span class="mr-2">💡</span> 正面功能
+                    </h2>
+                    <div id="front-features" class="space-y-3">
+                        <!-- 功能列表將由 JavaScript 填充 -->
+                    </div>
+                </div>
+
+                <!-- 背面功能清單 -->
+                <div class="bg-white p-6 rounded-xl shadow-2xl">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2 border-green-200">
+                        <span class="mr-2">⚙️</span> 背面功能
+                    </h2>
+                    <div id="back-features" class="space-y-3">
+                        <!-- 功能列表將由 JavaScript 填充 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 來自 microbit_v1_features.md 檔案的結構化資料
+        const features = {
+            front: [
+                { id: 1, name: "按鍵 (A & B)", desc: "兩個可獨立或組合使用的按鍵，用於輸入指令和控制程式。" },
+                { id: 2, name: "LED 螢幕 (5x5) 和光線感測器", desc: "由 25 個 LED 燈組成的 5x5 網格，用於顯示圖片、文字和數字。它同時也作為光線感測器，測量環境光的強弱。" },
+                { id: 3, name: "GPIO 引腳", desc: "通用輸入/輸出引腳，允許連接耳機、感應觸控，並添加其他電子產品。" },
+                { id: 4, name: "3 伏特電源引腳", desc: "可用於為外部 LED 和其他電子產品供電。" },
+                { id: 5, name: "接地引腳 (GND)", desc: "電路中的接地線，用於完成電路連接。" }
+            ],
+            back: [
+                { id: 1, name: "無線電及藍牙天線", desc: "允許 Micro:bit 透過無線電與其他 Micro:bit 通訊，或透過藍牙與其他裝置通訊。" },
+                { id: 2, name: "處理器和溫度感測器", desc: "Micro:bit 的「大腦」，負責執行您的指令。內含溫度感測器，可測量周遭環境的溫度。" },
+                { id: 3, name: "羅盤（Compass/磁力計）", desc: "用於尋找磁北或測量磁場強度，可應用於科學實驗或製作指南針。" },
+                { id: 4, name: "加速度感測器（Accelerometer）", desc: "測量三維度的作用力（包括重力），讓項目能夠感知方向、搖晃或移動。" },
+                { id: 5, name: "引腳（Pin）", desc: "連接外部配件、開關和電子產品，並為簡單的配件供電。" },
+                { id: 6, name: "Micro USB 孔", desc: "用於將程式從電腦下載到 Micro:bit，並為其供電。" },
+                { id: 7, name: "單個黃色 LED 燈", desc: "在程式下載時會閃爍，並在通過 USB 供電時保持亮起。" },
+                { id: 8, name: "重設按鍵", desc: "用於重新啟動 Micro:bit，並從頭開始重新運行程式。" },
+                { id: 9, name: "電池插孔", desc: "允許連接電池組（2 個 AAA 電池），使 Micro:bit 能夠在沒有 USB 連接的情況下運作。" },
+                { id: 10, name: "USB 介面晶片", desc: "用於向 Micro:bit 燒錄新程式碼，並透過 USB 發送和接收串列數據。" }
+            ]
+        };
+
+        /**
+         * 建立單個功能項目的 HTML 元素
+         * @param {Object} feature - 功能物件
+         * @returns {string} HTML 字符串
+         */
+        function createFeatureItem(feature) {
+            // 使用唯一的 ID 方便 JavaScript 操作
+            const featureId = `feature-${feature.id}-${feature.name.replace(/[^a-zA-Z0-9]/g, '')}`;
+            
+            return `
+                <div id="${featureId}" class="feature-item rounded-lg bg-gray-50 border border-gray-200" onclick="toggleDescription('${featureId}')">
+                    <!-- 可點擊的標題部分 -->
+                    <div class="flex items-center p-4">
+                        <span class="font-bold text-xl text-indigo-600 w-8 flex-shrink-0">
+                            ${feature.id}.
+                        </span>
+                        <span class="text-lg font-medium text-gray-700 flex-grow">
+                            ${feature.name}
+                        </span>
+                        <span class="text-gray-400 transform transition-transform duration-300 arrow-icon">
+                            <!-- SVG 圖示: 向下箭頭 -->
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                            </svg>
+                        </span>
+                    </div>
+
+                    <!-- 簡介內容部分 (預設隱藏) -->
+                    <div class="feature-description bg-indigo-50/50 text-gray-700 px-4">
+                        <p class="border-t border-indigo-200 pt-2">${feature.desc}</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        /**
+         * 渲染功能清單到指定的容器
+         * @param {string} containerId - DOM 容器的 ID (e.g., 'front-features')
+         * @param {Array<Object>} featureList - 功能物件陣列
+         */
+        function renderFeatures(containerId, featureList) {
+            const container = document.getElementById(containerId);
+            if (container) {
+                container.innerHTML = featureList.map(createFeatureItem).join('');
+            }
+        }
+
+        /**
+         * 點擊時切換簡介的顯示狀態
+         * @param {string} itemId - 功能項目的 ID
+         */
+        function toggleDescription(itemId) {
+            const itemElement = document.getElementById(itemId);
+            if (!itemElement) return;
+
+            // 取得簡介和箭頭圖示
+            const descElement = itemElement.querySelector('.feature-description');
+            const arrowIcon = itemElement.querySelector('.arrow-icon');
+            
+            // 檢查是否已經打開
+            const isOpen = descElement.classList.contains('open');
+
+            // 關閉所有其他打開的項目 (可選，但讓 UI 更整潔)
+            document.querySelectorAll('.feature-description.open').forEach(el => {
+                if (el !== descElement) {
+                    el.classList.remove('open');
+                    el.closest('.feature-item').querySelector('.arrow-icon').classList.remove('rotate-180');
+                }
+            });
+
+            // 執行切換
+            if (isOpen) {
+                descElement.classList.remove('open');
+                arrowIcon.classList.remove('rotate-180');
+                itemElement.classList.remove('shadow-lg'); // 關閉時移除陰影
+            } else {
+                descElement.classList.add('open');
+                arrowIcon.classList.add('rotate-180');
+                itemElement.classList.add('shadow-lg'); // 打開時增加陰影
+            }
+        }
+
+        // 頁面載入完成後執行渲染
+        document.addEventListener('DOMContentLoaded', () => {
+            renderFeatures('front-features', features.front);
+            renderFeatures('back-features', features.back);
+        });
+
+    </script>
+
+</body>
+</html>
