@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>馮諾依曼架構互動演示 (初中版) - 路徑修正版</title>
+    <style>
+        body {
+            font-family: 'Microsoft JhengHei', Arial, sans-serif;
+            background-color: #f0f4f8;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            position: relative;
+            width: 800px;
+            height: 600px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 15px;
+        }
+        
+        button {
+            padding: 12px 24px;
+            font-size: 18px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s, background 0.2s;
+            font-family: inherit;
+            font-weight: bold;
+        }
+        
+        #btn-next { background-color: #4CAF50; color: white; }
+        #btn-next:hover { background-color: #45a049; transform: scale(1.05); }
+        #btn-next:disabled { background-color: #ccc; transform: none; cursor: not-allowed; }
+        
+        #btn-reset { background-color: #ff9800; color: white; }
+        #btn-reset:hover { background-color: #e68900; transform: scale(1.05); }
+
+        svg { width: 100%; height: 100%; }
+
+        .unit-box {
+            stroke-width: 3;
+            stroke: #333;
+            transition: filter 0.3s, stroke 0.3s;
+        }
+
+        .unit-text {
+            font-size: 20px;
+            font-weight: bold;
+            fill: #333;
+            pointer-events: none;
+            text-anchor: middle;
+        }
+        
+        .unit-icon {
+            font-size: 40px;
+            pointer-events: none;
+            text-anchor: middle;
+        }
+
+        .bus-line {
+            stroke: #cbd5e0;
+            stroke-width: 8;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        /* 數據包群組樣式 */
+        #data-group {
+            display: none; /* 初始隱藏 */
+            cursor: default;
+        }
+        
+        #data-circle {
+            fill: #ff4757;
+            stroke: white;
+            stroke-width: 2;
+        }
+        
+        #data-text {
+            fill: white;
+            font-size: 14px;
+            font-weight: bold;
+            text-anchor: middle;
+            dominant-baseline: middle; /* 垂直居中 */
+            pointer-events: none;
+        }
+
+        #status-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 15px;
+            text-align: center;
+            font-size: 20px;
+            box-sizing: border-box;
+        }
+
+        .active-unit {
+            filter: drop-shadow(0 0 15px rgba(255, 215, 0, 0.8));
+            stroke: #ff9800;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>電腦運作流程演示 (路徑修正版)</h1>
+    <p>任務：計算 1 + 2 = ? (觀察小球如何沿著線路移動)</p>
+
+    <div class="container">
+        <svg viewBox="0 0 800 550">
+            <!-- 背景連接線 (Bus) - 定義清楚的軌道 -->
+            <!-- 底部橫向總線 -->
+            <path d="M150 400 L650 400" class="bus-line" />
+            <!-- 連接 Input -->
+            <path d="M150 250 L150 400" class="bus-line" />
+            <!-- 連接 Memory -->
+            <path d="M400 350 L400 400" class="bus-line" />
+            <!-- 連接 Output -->
+            <path d="M650 250 L650 400" class="bus-line" />
+            <!-- Memory 到 CPU 的垂直總線 -->
+            <path d="M400 250 L400 350" class="bus-line" />
+            <!-- CPU 內部橫向總線 -->
+            <path d="M345 150 L455 150" class="bus-line" />
+            <!-- 連接 CPU 到 垂直總線 -->
+            <path d="M400 150 L400 250" class="bus-line" />
+
+            <!-- CPU 大框 -->
+            <rect x="280" y="50" width="240" height="220" rx="10" fill="none" stroke="#999" stroke-dasharray="5,5" stroke-width="2" />
+            <text x="400" y="40" text-anchor="middle" fill="#666" font-size="16">中央處理器 (CPU)</text>
+
+            <!-- 1. 輸入單元 -->
+            <g id="unit-input">
+                <rect x="50" y="150" width="200" height="100" rx="10" fill="#e8f5e9" class="unit-box" />
+                <text x="150" y="190" class="unit-icon">⌨️</text>
+                <text x="150" y="220" class="unit-text">輸入單元</text>
+            </g>
+
+            <!-- 2. 記憶單元 -->
+            <g id="unit-memory">
+                <rect x="300" y="350" width="200" height="100" rx="10" fill="#fff3e0" class="unit-box" />
+                <text x="400" y="390" class="unit-icon">💾</text>
+                <text x="400" y="420" class="unit-text">記憶單元</text>
+            </g>
+
+            <!-- 3. 控制單元 (CU) -->
+            <g id="unit-cu">
+                <rect x="300" y="80" width="90" height="140" rx="10" fill="#ffebee" class="unit-box" />
+                <text x="345" y="140" class="unit-icon">👮</text>
+                <text x="345" y="170" class="unit-text" style="font-size:16px">控制單元</text>
+            </g>
+
+            <!-- 4. 算術邏輯單元 (ALU) -->
+            <g id="unit-alu">
+                <rect x="410" y="80" width="90" height="140" rx="10" fill="#e3f2fd" class="unit-box" />
+                <text x="455" y="140" class="unit-icon">🧮</text>
+                <text x="455" y="170" class="unit-text" style="font-size:16px">算術邏輯</text>
+            </g>
+
+            <!-- 5. 輸出單元 -->
+            <g id="unit-output">
+                <rect x="550" y="150" width="200" height="100" rx="10" fill="#f3e5f5" class="unit-box" />
+                <text x="650" y="190" class="unit-icon">🖥️</text>
+                <text x="650" y="220" class="unit-text">輸出單元</text>
+                <rect x="580" y="160" width="140" height="40" fill="#333" rx="5" />
+                <text id="screen-text" x="650" y="188" fill="#0f0" font-family="monospace" font-size="24" text-anchor="middle"></text>
+            </g>
+
+            <!-- 移動的數據包群組 (將圓點和文字綁定在一起) -->
+            <g id="data-group">
+                <circle id="data-circle" cx="0" cy="0" r="22" />
+                <text id="data-text" x="0" y="2">data</text>
+            </g>
+
+        </svg>
+        <div id="status-bar">點擊「下一步」開始運作...</div>
+    </div>
+
+    <div class="controls">
+        <button id="btn-next" onclick="nextStep()">下一步 ▶</button>
+        <button id="btn-reset" onclick="resetSim()">重置 ⟲</button>
+    </div>
+
+    <script>
+        let step = 0;
+        const statusText = document.getElementById('status-bar');
+        const dataGroup = document.getElementById('data-group');
+        const dataCircle = document.getElementById('data-circle');
+        const dataText = document.getElementById('data-text');
+        const screenText = document.getElementById('screen-text');
+        const btnNext = document.getElementById('btn-next');
+
+        const units = {
+            input: document.querySelector('#unit-input rect'),
+            memory: document.querySelector('#unit-memory rect'),
+            cu: document.querySelector('#unit-cu rect'),
+            alu: document.querySelector('#unit-alu rect'),
+            output: document.querySelector('#unit-output rect')
+        };
+
+        // 定義坐標點 (這些點對應 SVG 上的位置)
+        const POS = {
+            INPUT: { x: 150, y: 200 },
+            INPUT_CORNER: { x: 150, y: 400 }, // 轉角
+            MEMORY: { x: 400, y: 400 },
+            CPU_BUS_JUNCTION: { x: 400, y: 150 }, // CPU 內部總線交界
+            CU: { x: 345, y: 150 },
+            ALU: { x: 455, y: 150 },
+            OUTPUT_CORNER: { x: 650, y: 400 }, // 轉角
+            OUTPUT: { x: 650, y: 200 }
+        };
+
+        function clearHighlights() {
+            Object.values(units).forEach(el => el.classList.remove('active-unit'));
+        }
+
+        // 使用 Web Animations API 處理多段路徑移動
+        // points 是一個包含 {x, y} 對象的陣列
+        function animatePath(points, text, color = "#ff4757", speed = 1000) {
+            // 1. 設置顯示與內容
+            dataGroup.style.display = 'block';
+            dataText.textContent = text;
+            dataCircle.style.fill = color;
+
+            // 2. 構建關鍵幀 (Keyframes)
+            // 將 x, y 坐標轉換為 CSS transform: translate(x, y)
+            const keyframes = points.map(p => ({
+                transform: `translate(${p.x}px, ${p.y}px)`
+            }));
+
+            // 3. 執行動畫
+            const animation = dataGroup.animate(
+                keyframes, 
+                {
+                    duration: speed,
+                    fill: 'forwards', // 動畫結束後停留在最後位置
+                    easing: 'linear'  // 線性移動，讓轉彎處不卡頓
+                }
+            );
+
+            return animation.finished; // 返回 Promise 以便鏈式調用
+        }
+
+        function setPosition(pos) {
+            dataGroup.style.transform = `translate(${pos.x}px, ${pos.y}px)`;
+        }
+
+        async function nextStep() {
+            step++;
+            clearHighlights();
+            btnNext.disabled = true; // 動畫中禁用按鈕
+
+            switch(step) {
+                case 1: // 輸入 -> 記憶體 (走直角)
+                    statusText.textContent = "1. 輸入單元：數據進入，通過總線傳往記憶體";
+                    units.input.classList.add('active-unit');
+                    
+                    // 瞬間出現在起點
+                    setPosition(POS.INPUT); 
+                    
+                    // 規劃路徑：起點 -> 下方轉角 -> 記憶體
+                    await animatePath([
+                        POS.INPUT, 
+                        POS.INPUT_CORNER, 
+                        POS.MEMORY
+                    ], "1+2", "#ff4757", 1500);
+                    
+                    units.input.classList.remove('active-unit');
+                    units.memory.classList.add('active-unit');
+                    break;
+
+                case 2: // 記憶體 -> CU (走直角)
+                    statusText.textContent = "2. 記憶單元 -> 控制單元：CPU 讀取指令";
+                    units.memory.classList.add('active-unit');
+
+                    // 路徑：記憶體 -> 往上到 CPU 高度 -> 往左到 CU
+                    await animatePath([
+                        POS.MEMORY,
+                        POS.CPU_BUS_JUNCTION,
+                        POS.CU
+                    ], "1+2", "#ff4757", 1500);
+
+                    units.memory.classList.remove('active-unit');
+                    units.cu.classList.add('active-unit');
+                    break;
+
+                case 3: // CU -> ALU (直線)
+                    statusText.textContent = "3. 解碼與執行：CU 指揮 ALU 進行運算";
+                    units.cu.classList.add('active-unit');
+                    
+                    // 路徑：CU -> ALU
+                    await animatePath([
+                        POS.CU,
+                        POS.ALU
+                    ], "1+2", "#ff4757", 800);
+
+                    // 運算特效
+                    units.cu.classList.remove('active-unit');
+                    units.alu.classList.add('active-unit');
+                    
+                    // 閃爍一下代表計算中
+                    dataCircle.style.fill = "#fff";
+                    setTimeout(() => {
+                        dataText.textContent = "3"; 
+                        dataCircle.style.fill = "#9c27b0";
+                        statusText.textContent = "3. 運算完成！結果變成了 3";
+                    }, 300);
+                    break;
+
+                case 4: // ALU -> 記憶體 (走直角)
+                    statusText.textContent = "4. 寫回：將結果 3 存回記憶體";
+                    units.alu.classList.remove('active-unit');
+                    
+                    // 路徑：ALU -> 中間交界 -> 往下到記憶體
+                    await animatePath([
+                        POS.ALU,
+                        POS.CPU_BUS_JUNCTION,
+                        POS.MEMORY
+                    ], "3", "#9c27b0", 1500);
+                    
+                    units.memory.classList.add('active-unit');
+                    break;
+
+                case 5: // 記憶體 -> 輸出 (走直角)
+                    statusText.textContent = "5. 記憶單元 -> 輸出單元：準備顯示結果";
+                    units.memory.classList.add('active-unit');
+                    
+                    // 路徑：記憶體 -> 右下轉角 -> 上方輸出單元
+                    await animatePath([
+                        POS.MEMORY,
+                        POS.OUTPUT_CORNER,
+                        POS.OUTPUT
+                    ], "3", "#2196F3", 1500);
+                    
+                    units.memory.classList.remove('active-unit');
+                    units.output.classList.add('active-unit');
+                    break;
+
+                case 6: // 顯示結果
+                    statusText.textContent = "完成！在螢幕上看到結果";
+                    dataGroup.style.display = 'none'; // 數據包消失
+                    screenText.textContent = "Result: 3";
+                    units.output.classList.add('active-unit');
+                    
+                    btnNext.textContent = "演示結束";
+                    return; // 結束，不恢復按鈕
+            }
+            
+            if (step < 6) {
+                btnNext.disabled = false;
+            }
+        }
+
+        function resetSim() {
+            step = 0;
+            clearHighlights();
+            statusText.textContent = "點擊「下一步」開始運作...";
+            dataGroup.style.display = 'none';
+            screenText.textContent = "";
+            
+            // 取消所有進行中的動畫 (重置樣式)
+            dataGroup.getAnimations().forEach(anim => anim.cancel());
+            
+            btnNext.textContent = "下一步 ▶";
+            btnNext.disabled = false;
+            btnNext.style.backgroundColor = "#4CAF50";
+        }
+    </script>
+</body>
+</html>
