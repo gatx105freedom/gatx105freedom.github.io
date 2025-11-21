@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>重力加速度互動演示</title>
+    <style>
+        body {
+            font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f0f4f8;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            color: #333;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+
+        .canvas-area {
+            position: relative;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            background: #eef9ff; /* 天空色 */
+            overflow: hidden;
+        }
+
+        .controls-area {
+            width: 300px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .control-group {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #eee;
+        }
+
+        h3 { margin-top: 0; font-size: 1.1rem; }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        select, input[type="range"] {
+            width: 100%;
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            margin-bottom: 10px;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-weight: bold;
+        }
+
+        #btn-start { background-color: #2ecc71; color: white; }
+        #btn-start:hover { background-color: #27ae60; }
+        
+        #btn-reset { background-color: #e74c3c; color: white; }
+        #btn-reset:hover { background-color: #c0392b; }
+
+        .data-display {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            font-family: monospace;
+            font-size: 1.1em;
+        }
+        
+        .data-item span {
+            font-weight: bold;
+            color: #2980b9;
+        }
+
+        .legend {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-size: 0.9rem;
+            margin-top: 10px;
+        }
+        
+        .legend-item { display: flex; align-items: center; gap: 8px; }
+        .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+        
+        /* SVG Styles */
+        text { user-select: none; font-family: monospace; }
+        .grid-line { stroke: #ccc; stroke-dasharray: 4; stroke-width: 1; }
+    </style>
+</head>
+<body>
+
+    <h1>重力加速度互動實驗室</h1>
+    <p>觀察不同星球重力 ($g$) 對物體掉落速度 ($v$) 的影響。</p>
+
+    <div class="container">
+        <!-- SVG 繪圖區 -->
+        <div class="canvas-area">
+            <svg id="simSvg" width="400" height="500" viewBox="0 0 400 500">
+                <defs>
+                    <!-- 定義箭頭標記 -->
+                    <marker id="arrow-red" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                        <path d="M0,0 L0,6 L9,3 z" fill="#e74c3c" />
+                    </marker>
+                    <marker id="arrow-blue" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                        <path d="M0,0 L0,6 L9,3 z" fill="#3498db" />
+                    </marker>
+                </defs>
+
+                <!-- 背景網格 -->
+                <g id="grid"></g>
+
+                <!-- 地面 -->
+                <rect x="0" y="450" width="400" height="50" fill="#7f8c8d" />
+                <line x1="0" y1="450" x2="400" y2="450" stroke="#555" stroke-width="2" />
+                <text x="10" y="480" fill="white">地面 (0m)</text>
+
+                <!-- 尺規標示 -->
+                <g id="ruler" transform="translate(350, 0)"></g>
+
+                <!-- 球體群組 (球 + 箭頭) -->
+                <g id="ballGroup" transform="translate(200, 50)">
+                    <!-- 速度向量 (藍色) -->
+                    <line id="vec-velocity" x1="0" y1="0" x2="0" y2="0" stroke="#3498db" stroke-width="4" marker-end="url(#arrow-blue)" />
+                    
+                    <!-- 加速度向量 (紅色) -->
+                    <line id="vec-gravity" x1="0" y1="0" x2="0" y2="40" stroke="#e74c3c" stroke-width="4" marker-end="url(#arrow-red)" opacity="0.7" transform="translate(15, 0)" />
+
+                    <!-- 球 -->
+                    <circle cx="0" cy="0" r="20" fill="#f1c40f" stroke="#d35400" stroke-width="2" />
+                    
+                    <!-- 球內標籤 -->
+                    <text x="0" y="5" text-anchor="middle" font-size="12" fill="#333">m</text>
+                </g>
+            </svg>
+        </div>
+
+        <!-- 控制面板 -->
+        <div class="controls-area">
+            <div class="control-group">
+                <h3>環境設定</h3>
+                <label for="planet-select">選擇星球 (重力強度)</label>
+                <select id="planet-select">
+                    <option value="9.8" selected>地球 (g = 9.8 m/s²)</option>
+                    <option value="1.62">月球 (g = 1.62 m/s²)</option>
+                    <option value="3.71">火星 (g = 3.71 m/s²)</option>
+                    <option value="24.79">木星 (g = 24.79 m/s²)</option>
+                    <option value="0">無重力 (g = 0 m/s²)</option>
+                </select>
+
+                <label for="elasticity">彈性係數 (0-1)</label>
+                <input type="range" id="elasticity" min="0" max="0.95" step="0.05" value="0.7">
+                <div style="text-align: right; font-size: 0.8em;" id="elasticity-val">0.7</div>
+            </div>
+
+            <div class="control-group">
+                <h3>即時數據</h3>
+                <div class="data-display">
+                    <div class="data-item">時間: <span id="disp-time">0.00</span>s</div>
+                    <div class="data-item">高度: <span id="disp-height">0.00</span>m</div>
+                    <div class="data-item">速度: <span id="disp-velocity">0.00</span>m/s</div>
+                    <div class="data-item">重力: <span id="disp-g">9.8</span>m/s²</div>
+                </div>
+                
+                <div class="legend">
+                    <div class="legend-item"><span class="dot" style="background:#e74c3c"></span> 加速度 (重力)</div>
+                    <div class="legend-item"><span class="dot" style="background:#3498db"></span> 速度 (v)</div>
+                </div>
+            </div>
+
+            <button id="btn-start">開始落下</button>
+            <button id="btn-reset">重置</button>
+        </div>
+    </div>
+
+    <script>
+        // === 設定與變數 ===
+        const svgHeight = 500;
+        const groundY = 450; // 地面 Y 座標
+        const ballRadius = 20;
+        const pixelsPerMeter = 50; // 50px 代表 1公尺
+        const startHeightPixels = 50; // 起始位置
+        
+        // 物理變數
+        let g = 9.8; // 重力加速度
+        let velocity = 0; // 速度 (m/s)
+        let positionY = startHeightPixels; // 當前 SVG Y 座標
+        let time = 0;
+        let elasticity = 0.7; // 反彈係數
+        let isRunning = false;
+        let lastFrameTime = 0;
+        let animationId = null;
+
+        // DOM 元素
+        const ballGroup = document.getElementById('ballGroup');
+        const vecVelocity = document.getElementById('vec-velocity');
+        const vecGravity = document.getElementById('vec-gravity');
+        const dispTime = document.getElementById('disp-time');
+        const dispHeight = document.getElementById('disp-height');
+        const dispVelocity = document.getElementById('disp-velocity');
+        const dispG = document.getElementById('disp-g');
+        const btnStart = document.getElementById('btn-start');
+        const btnReset = document.getElementById('btn-reset');
+        const planetSelect = document.getElementById('planet-select');
+        const elasticityInput = document.getElementById('elasticity');
+        const rulerGroup = document.getElementById('ruler');
+        const gridGroup = document.getElementById('grid');
+
+        // === 初始化繪圖 ===
+        function drawRuler() {
+            // 畫標尺與網格
+            const maxMeters = groundY / pixelsPerMeter; // 約 9米
+            
+            for(let i = 0; i <= maxMeters; i++) {
+                const y = groundY - (i * pixelsPerMeter);
+                
+                // SVG 標尺刻度
+                const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                text.setAttribute("x", 20);
+                text.setAttribute("y", y + 5);
+                text.setAttribute("text-anchor", "end");
+                text.setAttribute("fill", "#777");
+                text.setAttribute("font-size", "12");
+                text.textContent = i + "m";
+                rulerGroup.appendChild(text);
+
+                const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                line.setAttribute("x1", 0);
+                line.setAttribute("y1", y);
+                line.setAttribute("x2", 10);
+                line.setAttribute("y2", y);
+                line.setAttribute("stroke", "#777");
+                rulerGroup.appendChild(line);
+
+                // 背景虛線
+                if (i > 0) {
+                    const gridLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                    gridLine.setAttribute("x1", 0);
+                    gridLine.setAttribute("y1", y);
+                    gridLine.setAttribute("x2", 400);
+                    gridLine.setAttribute("y2", y);
+                    gridLine.setAttribute("class", "grid-line");
+                    gridGroup.appendChild(gridLine);
+                }
+            }
+        }
+
+        // === 物理循環 ===
+        function updatePhysics(timestamp) {
+            if (!lastFrameTime) lastFrameTime = timestamp;
+            const dt = (timestamp - lastFrameTime) / 1000; // 轉換為秒
+            lastFrameTime = timestamp;
+
+            // 最大時間步長以防切換分頁時的跳躍
+            if (dt > 0.1) { 
+                animationId = requestAnimationFrame(updatePhysics);
+                return; 
+            }
+
+            // 1. 更新速度: v = v0 + a * t
+            velocity += g * dt;
+
+            // 2. 更新位置: y = y0 + v * t (這裡把 m 轉回 px)
+            // SVG座標系向下為正，所以落下是增加 Y
+            positionY += velocity * pixelsPerMeter * dt;
+
+            // 3. 碰撞檢測 (地面)
+            if (positionY >= groundY - ballRadius) {
+                positionY = groundY - ballRadius;
+                
+                // 反彈：速度反轉並衰減
+                if (Math.abs(velocity) < 0.5) {
+                    velocity = 0; // 停止微小彈跳
+                    if (Math.abs(positionY - (groundY - ballRadius)) < 1) {
+                        // 幾乎停在地面
+                        isRunning = false;
+                        btnStart.textContent = "重新開始";
+                        updateView();
+                        return; // 結束迴圈
+                    }
+                } else {
+                    velocity = -velocity * elasticity;
+                }
+            }
+
+            time += dt;
+            updateView();
+
+            if (isRunning) {
+                animationId = requestAnimationFrame(updatePhysics);
+            }
+        }
+
+        // === 視圖更新 ===
+        function updateView() {
+            // 移動球
+            ballGroup.setAttribute('transform', `translate(200, ${positionY})`);
+
+            // 計算實際高度 (公尺)
+            const heightMeters = (groundY - ballRadius - positionY) / pixelsPerMeter;
+
+            // 更新數據文字
+            dispTime.textContent = time.toFixed(2);
+            dispHeight.textContent = Math.max(0, heightMeters).toFixed(2);
+            dispVelocity.textContent = Math.abs(velocity).toFixed(2);
+
+            // 更新向量箭頭
+            
+            // 1. 重力箭頭 (紅色) - 長度固定 (除非 g=0)
+            const gravityLen = g === 0 ? 0 : 40;
+            vecGravity.setAttribute('y2', gravityLen);
+
+            // 2. 速度箭頭 (藍色) - 長度隨速度變化
+            // 縮放係數讓箭頭不要太長
+            const velScale = 5; 
+            const velLen = velocity * velScale;
+            vecVelocity.setAttribute('y2', velLen);
+            
+            // 處理箭頭方向 (負值向上)
+            // 注意：因為 marker-end 總是畫在線尾，如果 y2 是負的，線往上畫，箭頭自然向上
+        }
+
+        // === 事件監聽 ===
+        
+        // 開始/暫停
+        btnStart.addEventListener('click', () => {
+            if (isRunning) {
+                isRunning = false;
+                cancelAnimationFrame(animationId);
+                lastFrameTime = 0;
+                btnStart.textContent = "繼續";
+            } else {
+                // 如果已經落地停止，先重置
+                if (positionY >= groundY - ballRadius - 1 && Math.abs(velocity) < 0.1) {
+                    reset();
+                }
+                isRunning = true;
+                lastFrameTime = 0;
+                animationId = requestAnimationFrame(updatePhysics);
+                btnStart.textContent = "暫停";
+            }
+        });
+
+        // 重置
+        btnReset.addEventListener('click', reset);
+
+        function reset() {
+            isRunning = false;
+            cancelAnimationFrame(animationId);
+            lastFrameTime = 0;
+            time = 0;
+            velocity = 0;
+            positionY = startHeightPixels;
+            btnStart.textContent = "開始落下";
+            updateView();
+        }
+
+        // 切換星球
+        planetSelect.addEventListener('change', (e) => {
+            g = parseFloat(e.target.value);
+            dispG.textContent = g;
+            reset(); // 改變重力通常需要重置實驗
+        });
+
+        // 調整彈性
+        elasticityInput.addEventListener('input', (e) => {
+            elasticity = parseFloat(e.target.value);
+            document.getElementById('elasticity-val').textContent = elasticity;
+        });
+
+        // === 初始化 ===
+        drawRuler();
+        reset();
+
+    </script>
+</body>
+</html>
