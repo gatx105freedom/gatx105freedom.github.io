@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>教學目標與基本學力要求配對 (Gemini AI 驅動版)</title>
+    <style>
+        /* 基礎樣式與 Canvas LMS 風格 */
+        body {
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            background-color: #f5f5f5;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border: 1px solid #c7c7c7;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        
+        /* 頁首標題 */
+        header {
+            background-color: #f9f9f9;
+            border-bottom: 1px solid #e0e0e0;
+            padding: 20px 30px;
+            border-radius: 8px 8px 0 0;
+        }
+        h1 {
+            color: #2d3b45;
+            text-align: center;
+            margin: 0;
+        }
+        
+        /* 內容區域 */
+        .content {
+            padding: 30px;
+        }
+        .step {
+            margin-bottom: 35px;
+        }
+        h2 {
+            font-size: 1.5em;
+            color: #2d3b45;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        /* 輸入框樣式 */
+        textarea.user-input {
+            width: 100%;
+            height: 250px;
+            padding: 15px;
+            font-family: "Menlo", "Consolas", "Courier New", monospace;
+            font-size: 0.95em;
+            line-height: 1.6;
+            background-color: #fdfdfd;
+            border: 1px solid #c7c7c7;
+            border-radius: 6px;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+            resize: vertical;
+            box-sizing: border-box;
+        }
+        #teachingObjectives { height: 350px; }
+        #basicRequirements { height: 350px; }
+
+        /* 按鈕樣式 */
+        .action-area {
+            text-align: center;
+            margin-bottom: 30px;
+            position: sticky;
+            bottom: 20px;
+            z-index: 100;
+        }
+        #generateButton {
+            background: linear-gradient(135deg, #0077b5 0%, #005a8b 100%);
+            color: white;
+            padding: 14px 35px;
+            border: none;
+            border-radius: 30px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(0,119,181,0.4);
+            font-weight: bold;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+        #generateButton:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,119,181,0.5);
+        }
+        #generateButton:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        /* Gemini Logo 模擬 */
+        .sparkle-icon {
+            font-size: 1.2em;
+        }
+
+        /* 切換按鈕 */
+        .req-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        .req-btn {
+            background-color: #fff;
+            border: 1px solid #0077b5;
+            color: #0077b5;
+            padding: 5px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85em;
+            transition: all 0.2s;
+        }
+        .req-btn:hover { background-color: #e6f2ff; }
+        .req-btn.active { background-color: #0077b5; color: white; }
+        
+        /* 配對結果樣式 */
+        .output-box ul { list-style-type: none; padding-left: 0; }
+        .output-box li {
+            background-color: #fff;
+            border: 1px solid #e9e9e9;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+            transition: border-color 0.2s;
+        }
+        .output-box li:hover {
+            border-color: #0077b5;
+        }
+        .objective-text {
+            display: block;
+            color: #2d3b45;
+            font-size: 1.15em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .match-item {
+            margin-top: 10px;
+            padding: 12px;
+            background-color: #f0f7fb;
+            border-left: 4px solid #0077b5;
+            border-radius: 0 6px 6px 0;
+        }
+
+        .requirement-tag {
+            display: inline-block;
+            background-color: #0077b5;
+            color: white;
+            font-weight: bold;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            margin-right: 8px;
+        }
+        
+        .match-reason {
+            display: block;
+            margin-top: 6px;
+            font-size: 0.9em;
+            color: #555;
+            font-style: italic;
+        }
+        .match-reason::before {
+            content: "💡 AI 分析：";
+            font-style: normal;
+        }
+
+        /* Loading 動畫 */
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .initial-message {
+            color: #777;
+            text-align: center;
+            padding: 40px;
+            background: #f9f9f9;
+            border-radius: 8px;
+        }
+        
+        .unmapped-list li {
+            margin-bottom: 8px;
+            color: #555;
+            border-bottom: 1px dashed #eee;
+            padding-bottom: 5px;
+        }
+        .unmapped-list strong {
+            color: #c0392b;
+            margin-right: 5px;
+        }
+        
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>教學目標與基本學力要求配對系統</h1>
+        </header>
+
+        <div class="content">
+
+            <!-- 1. 使用者輸入：教學目標 -->
+            <div class="step">
+                <h2>1. 使用者輸入：教學目標</h2>
+                <textarea id="teachingObjectives" class="user-input">
+A 知識目標
+  A-3 列舉電腦系統中的五大單元
+  A-4 描述中央處理器的外觀、功能
+  A-5 比較熱力圖、箱形圖與散點圖的特點與適用情境
+  A-6 闡述生成式 AI 在數據分析中的優勢與局限性
+
+B 情意目標
+  B-1 關注資訊科技工具在日常學習中的應用價值
+  B-2 積極參與使用編程解決複雜的數據問題
+
+C 技能目標
+  C-1 能正確地使用pandas函數讀取數據
+  C-7 能正確地將數據或圖表儲存
+</textarea>
+            </div>
+
+            <!-- 2. 使用者輸入：基本學力要求 -->
+            <div class="step">
+                <h2>
+                    <span>2. 檢視/編輯：基本學力要求</span>
+                    <div class="req-buttons">
+                        <button id="btnJunior" class="req-btn" onclick="loadRequirements('junior')">載入初中標準</button>
+                        <button id="btnSenior" class="req-btn" onclick="loadRequirements('senior')">載入高中標準</button>
+                    </div>
+                </h2>
+                <textarea id="basicRequirements" class="user-input" placeholder="請選擇上方的按鈕載入標準，或直接在此貼上您的基本學力要求..."></textarea>
+            </div>
+            
+            <!-- 按鈕區 -->
+            <div class="action-area">
+                <button id="generateButton" onclick="callGeminiPairing()">
+                    <span class="sparkle-icon">✨</span> 呼叫 Gemini AI 進行深度配對
+                </button>
+            </div>
+
+            <!-- 3. 系統配對結果 -->
+            <div class="step">
+                <h2>3. 系統配對結果 (AI 實時分析)</h2>
+                <div id="pairingResults" class="output-box">
+                    <p class="initial-message">點擊按鈕後，Gemini AI 將閱讀您的文字，理解諸如「中央處理器」與「硬體架構」的邏輯關係並進行配對。</p>
+                </div>
+            </div>
+
+            <!-- 4. 未配對的基本學力要求 -->
+            <div class="step">
+                <h2>4. 未配對的基本學力要求</h2>
+                <div id="unmappedRequirements" class="unmapped-box">
+                    <p class="initial-message">分析後顯示未被使用的條目。</p>
+                </div>
+            </div>
+
+        </div> <!-- /content -->
+    </div> <!-- /container -->
+
+    <script>
+        // API Key 由環境變數提供
+        const apiKey = ""; 
+
+        // --- 資料庫：基本學力要求 (方便快速載入) ---
+        const REQ_DATA = {
+            junior: `A－1	理解資訊的含義，知道資訊的類型，能說出資訊的主要特性和不同表達方式；
+A－2	知道資訊科技發展的歷史、趨勢及對人類社會的多方面影響，尤其是某些技術可能對社會帶來的倫理和安全挑戰；
+A－3	能列舉生活中常見的通訊工具和通訊方式，會描述通訊系統的基本組成；
+A－4	理解個人電腦系統的基本架構和工作原理，能說出個人電腦各主要硬件部件的作用；
+A－5	知道網絡科技的應用和寬帶接入、無線接入等常見的互聯網接入方式，學會互聯網資訊檢索的常用技巧；
+A－6	理解互聯網、物聯網及相關新技術的本質和基本原理；
+A－7	瞭解常用互聯網應用中數據的構成，雲存儲、雲計算的原理；
+A－8	初步理解萬物互聯給人類資訊化社會帶來的機遇和挑戰，瞭解物聯網，尤其是傳感器系統，在各個領域中的應用與發展；
+A－9	認識到互聯網帶來的新媒體、新社交、新資源對學習和生活的影響；
+A－10	理解程式設計基本原理，掌握一種程式語言的基礎語法；
+A－11	結合一種程式設計工具，理解及掌握演算法中如流程圖、數據結構等的相關概念；
+A－12	瞭解和體驗人工智能中機器學習，包括深度學習的過程；
+A－13	瞭解人工智能所依賴的數據、演算法、算力三大技術的基礎知識；
+A－14	通過分析典型的人工智能應用場景，理解人工智能的特點、優勢和能力邊界；
+A－15	通過各個領域的人工智能應用，瞭解智能社會是集成了多種具有人工智能基礎設施和服務的智能生態系統的新型社會形態；
+A－16	理解資訊安全基礎知識，能列舉資訊安全保護的基本方式；
+A－17	認識資訊科技支援下的多元學習方式，理解資訊科技對學習方式的影響。
+B－1	能夠使用文件編輯工具、線上協作工具等創建網絡文件，熟練利用線上課堂進行線上學習與交流，體驗線上學習與生活的新模式；
+B－2	能夠根據學習和交流的需要，使用一系列互聯網工具搜索、篩選、管理並貢獻有價值的數據和資源，諸如搜索引擎、生成式人工智能工具和其他可以獲取網絡資訊的工具，創建具有特色的作品；
+B－3	能正確使用人工智能工具協助進行數據分析，繼而使用有價值的數據進行決策；
+B－4	使用互聯網應用時，能夠利用用戶標識、密碼和身份驗證等措施做好基本防護，會使用加密軟件對重要數據和個人資訊進行加密保護；
+B－5	能夠使用包括網絡磁碟、隨身碟在內的多種形式進行數據備份，有效管理數據；
+B－6	能夠使用適當的數字化工具，如3D建模及影音製作，進行創意設計，體驗數字技術對生活帶來的影響；
+B－7	能設計並實現具有簡單數字系統，探索數據獲取、處理、回饋控制等基本功能，體驗物聯網、大數據及人工智能的關係；
+B－8	使用人工智能領域的程式語言或程式設計平台，完成針對特定任務的簡單人工智能實踐項目。
+C－1	能通過在資訊科技平台展示創作的作品，互動並收集回饋的資訊；
+C－2	能通過人工智能來協助團隊對未知科學領域進行合作探究學習活動；
+C－3	能使用開放的資訊科技工具共享資訊，與人分享澳門多元的文化；
+C－4	能善於運用不同的資訊科技資源開展跨學科的自主、合作等多種形式的學習；
+C－5	知道團隊合作的重要性，能圍繞跨學科主題學習，運用資訊科技共同探討身邊問題，創造性地設計解決方案，提高學習質量。
+D－1	在資訊活動中，懂得隱私的重要性，既懂得保護個人隱私，同時亦能尊重他人隱私；
+D－2	資訊活動中能自覺保護知識產權，遵守相關的知識產權法律法規；
+D－3	能學會甄別資訊的真偽，瞭解和防範網絡詐騙，拒絕網上的不良資訊，傳播真實資訊與優秀的文化；
+D－4	能瞭解個人隱私相關法規，瞭解網絡犯罪的共通點及如何防範網絡犯罪，養成健康、文明地使用資訊科技的生活和學習習慣；
+D－5	能積極參與資訊科技的新體驗，融入資訊化社會的同時能批判性地審視和運用資訊科技；
+D－6	認識澳門資訊科技發展對社會及日常生活的影響，透過資訊科技承擔公民應盡的責任和義務；
+D－7	在日常學習、生活和實踐中，感受人工智能技術的發展給人類社會帶來的深刻影響；
+D－8	知道人工智能與社會的關係，通過體驗人工智能的應用場景，瞭解人工智能帶來的倫理與安全挑戰，以及發展人工智能應遵循的倫理道德規範，增強自我判斷意識和責任感，做到與人工智能良好共處；
+D－9	瞭解國家安全法律法規中的資訊科技安全相關內容；
+D－10	瞭解自主可控技術對保障國家安全與智慧社會的安全的重要作用；
+D－11	能對國家近年在資訊科技的發展和成就有初步認知，啟迪愛國情操。`,
+
+            senior: `A－1	理解數據與資訊的關係，瞭解大數據的概念與特徵，知道電腦中字符、聲音、圖像常用的編碼方式；
+A－2	理解演算法的概念與特徵，綜合運用流程圖、虛擬碼等描述方法和控制結構表示演算法，理解演算法的效率；
+A－3	掌握一種程式設計語言的基本知識，能使用程式設計語言實現簡單演算法，掌握程式調試和運行的方法；
+A－4	理解電腦和常用數字設備的基本工作原理，熟練掌握常用操作系統的應用功能；
+A－5	知道網絡通訊的功能，認識常用的網絡設備，知道網絡類型的基本特徵，能說明常用網絡通訊協議的職責及作用。瞭解物聯網的概念，瞭解物聯網相關設備及功能，描述物聯網實現原理；
+A－6	瞭解數據獲取、清洗、分析和可視化的過程與方法，掌握電子表格、數據處理平台、程式設計語言等常用的數據處理工具應用方法與功能；
+A－7	認識數據安全的重要性，知道引發數據安全風險的主要因素，掌握數據安全防範的技術方法與策略，理解國家安全法律法規中的資訊科技安全相關內容；
+A－8	知道人工智能的數據、演算法、算力三大技術基礎，瞭解人工智能中的感知、推理、預測和機器學習的實現方式；
+A－9	瞭解深度學習的原理、結構和常見的神經網絡模型。掌握生成式人工智能的應用技巧和生成結果的判斷方法，知道生成式人工智能優勢和潛在風險。
+B－1	針對具體的學習任務，選用恰當的數字設備和平台開展數字化學習，創新數字化學習方法；
+B－2	按照活動任務，抽象問題關鍵特徵，採用形式化方法表述問題，運用演算法知識設計和描述解決問題方案，執行和優化方案；
+B－3	按照解決問題的需要，合理使用Python數據科學庫處理和分析數據；
+B－4	根據任務需求，選用恰當的軟件工具或平台處理數據，從數據描述、可視化呈現和相關建議等方面完成數據分析報告；
+B－5	依據實際需要，設計小型局域網的組網方案，選用恰當的網絡設備或通過虛擬軟件組建小型局域網；
+B－6	採用線上線下相結合方式，利用網絡資訊發佈、數據獲取和快速分析的優勢，創新學習、生活和交流的新模式；
+B－7	在資訊科技應用中，採用恰當的技術方法與策略做好數據安全防範，瞭解數據加密的基本知識與方法，規避資訊科技應用中的潛在風險；
+B－8	能綜合地設計、製作音訊、視頻、動畫、漫畫等互動的多媒體作品，發揮生成式人工智能優勢，創新多媒體作品創作方法，合理地發佈與共享多媒體作品；
+B－9	針對任務需求，實踐基於深度學習的圖像分類、物體檢測等任務，探索自然語言處理的基本技術和應用場景。
+C－1	能適當、合法地運用網絡社交平台和其他通訊工具溝通、交流，保護個人和他人隱私；
+C－2	能善用資訊科技開展跨學科的交流和自主、合作學習，理解和尊重世界文化的多樣性；
+C－3	面對問題時能合作運用資訊科技交流，共同探索解決方案，尊重和保護知識產權；
+C－4	能充分利用雲端工具共享資訊，交流、分享澳門多元的文化；
+C－5	發揮資訊科技優勢，加強人機協同創新，推動智慧澳門建設。
+D－1	遵守資訊科技的相關法律法規，融入文明、健康的資訊化生活；
+D－2	能關注資訊科技發展，積極參與體驗並應用資訊科技的成果，認識當代中國在資訊科技領域的發展，尤其包括航天科技、高鐵系統、電子商貿等，關注國家在資訊科技發展對世界的作用，知道自主可控技術對國家發展的重要作用；
+D－3	能開放地分享、傳播優秀的資訊文化，樂於幫助資訊科技應用的弱勢群體，具備家國情懷、國家觀念、世界視野，參與愛國愛澳、中華優秀傳統文化的共建；
+D－4	認識網絡隱藏的危機，尤其包括沉迷上網、網絡欺凌、網絡交友陷阱等，知道假冒網站、手機木馬程式詐騙、社交媒體欺騙、勒索軟件等網絡詐騙的常見手法，規避網絡不安全行為，形成正確的上網態度，拒絕接收、傳播、發放危及國家安全的資訊、網上不良資訊及虛假和欺騙的資訊；
+D－5	能認識資訊科技運用帶來的積極或消極影響，做負責任的資訊時代公民；
+D－6	認識資訊科技發展對社會倫理的影響，辨別資訊科技時代的道德問題，按照資訊社會倫理道德開展資訊活動。`
+        };
+
+        // 載入學力要求
+        function loadRequirements(type) {
+            const textarea = document.getElementById('basicRequirements');
+            const btnJunior = document.getElementById('btnJunior');
+            const btnSenior = document.getElementById('btnSenior');
+
+            if (type === 'junior') {
+                textarea.value = REQ_DATA.junior;
+                btnJunior.classList.add('active');
+                btnSenior.classList.remove('active');
+            } else {
+                textarea.value = REQ_DATA.senior;
+                btnSenior.classList.add('active');
+                btnJunior.classList.remove('active');
+            }
+            
+            document.getElementById('pairingResults').innerHTML = '<p class="initial-message">已載入標準。請點擊「✨ 呼叫 Gemini AI」按鈕。</p>';
+        }
+
+        // Gemini API 呼叫邏輯
+        async function callGeminiPairing() {
+            const button = document.getElementById('generateButton');
+            const pairingResultsDiv = document.getElementById('pairingResults');
+            const unmappedRequirementsDiv = document.getElementById('unmappedRequirements');
+            
+            const objectivesInput = document.getElementById('teachingObjectives').value;
+            const requirementsInput = document.getElementById('basicRequirements').value;
+
+            if (!requirementsInput.trim() || !objectivesInput.trim()) {
+                alert("請確保教學目標與基本學力要求均已輸入！");
+                return;
+            }
+
+            // UI 狀態：載入中
+            button.disabled = true;
+            button.innerHTML = '<span class="loading-spinner"></span> 正在連線 Gemini AI 進行語意分析...';
+            pairingResultsDiv.innerHTML = '<p class="initial-message">正在將您的資料傳送給 Google Gemini 模型，請稍候...</p>';
+            unmappedRequirementsDiv.innerHTML = '<p class="initial-message">分析中...</p>';
+
+            // 構建 Prompt
+            const prompt = `
+            你是一個專業的資訊科技教育專家。請根據以下提供的「教學目標」與「基本學力要求」進行配對。
+            
+            任務：
+            1. 仔細閱讀每一個教學目標。
+            2. 在基本學力要求中尋找與該目標「語意最相關」的條目。
+            3. 注意：不要只進行關鍵字匹配！請理解背後的概念。
+               例如：「中央處理器(CPU)」屬於「電腦硬體架構」概念，應配對到有關硬體原理的條目。
+               例如：「Pandas」是「數據分析工具」，應配對到有關數據處理的條目。
+            4. 每個目標可以對應 1 到 2 個最相關的學力要求。如果沒有強烈相關的，可以留空。
+
+            資料如下：
+            【教學目標】
+            ${objectivesInput}
+
+            【基本學力要求】
+            ${requirementsInput}
+
+            請以純 JSON 格式回傳結果，格式如下，不要包含 markdown 代碼標記：
+            {
+                "pairings": [
+                    {
+                        "objective_line": "原始的教學目標文字 (包含編號)",
+                        "matches": [
+                            {
+                                "code": "學力要求編號 (如 A-4)",
+                                "text": "學力要求內容摘要",
+                                "reason": "簡短解釋為什麼配對 (例如：CPU 是電腦系統的核心硬體)"
+                            }
+                        ]
+                    }
+                ],
+                "unmapped_requirements": [
+                    "未被使用的學力要求完整條目1",
+                    "未被使用的學力要求完整條目2"
+                ]
+            }
+            `;
+
+            try {
+                const response = await fetchWithBackoff(
+                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            contents: [{
+                                parts: [{ text: prompt }]
+                            }],
+                            generationConfig: {
+                                responseMimeType: "application/json"
+                            }
+                        })
+                    }
+                );
+
+                const data = await response.json();
+                
+                if (!data.candidates || !data.candidates[0].content) {
+                    throw new Error("Gemini 回傳了非預期的格式");
+                }
+
+                const rawText = data.candidates[0].content.parts[0].text;
+                // 清理可能存在的 markdown 標記
+                const jsonText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+                const resultObj = JSON.parse(jsonText);
+
+                renderResults(resultObj);
+
+            } catch (error) {
+                console.error("API Error:", error);
+                pairingResultsDiv.innerHTML = `<p class="initial-message" style="color: red;">配對失敗：${error.message}。<br>請稍後再試。</p>`;
+            } finally {
+                button.disabled = false;
+                button.innerHTML = '<span class="sparkle-icon">✨</span> 呼叫 Gemini AI 進行深度配對';
+            }
+        }
+
+        // 指數退避重試邏輯
+        async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
+            try {
+                const response = await fetch(url, options);
+                if (!response.ok) {
+                    if (response.status === 429 && retries > 0) {
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        return fetchWithBackoff(url, options, retries - 1, delay * 2);
+                    }
+                    throw new Error(`HTTP Error: ${response.status}`);
+                }
+                return response;
+            } catch (err) {
+                if (retries > 0) {
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    return fetchWithBackoff(url, options, retries - 1, delay * 2);
+                }
+                throw err;
+            }
+        }
+
+        // 渲染結果
+        function renderResults(data) {
+            const resultsDiv = document.getElementById('pairingResults');
+            const unmappedDiv = document.getElementById('unmappedRequirements');
+            
+            let html = '<ul>';
+            
+            data.pairings.forEach(item => {
+                // 判斷這行是不是標題 (簡單判斷：如果不包含配對且文字較短，可能是標題行，或者Gemini也可能回傳標題)
+                // 但為了保險，我們直接渲染每一個回傳的項目
+                
+                let matchesHtml = '';
+                if (item.matches && item.matches.length > 0) {
+                    item.matches.forEach(match => {
+                        matchesHtml += `
+                            <div class="match-item">
+                                <div><span class="requirement-tag">${match.code}</span> ${match.text}</div>
+                                <div class="match-reason">${match.reason}</div>
+                            </div>
+                        `;
+                    });
+                } else {
+                    matchesHtml = `<div class="match-item" style="border-left-color: #ccc; background: #f9f9f9; color: #999;">無強烈相關的學力要求</div>`;
+                }
+
+                html += `
+                    <li>
+                        <span class="objective-text">${item.objective_line}</span>
+                        ${matchesHtml}
+                    </li>
+                `;
+            });
+            html += '</ul>';
+            resultsDiv.innerHTML = html;
+
+            // 渲染未配對項目
+            if (data.unmapped_requirements && data.unmapped_requirements.length > 0) {
+                let unmappedHtml = '<p>以下基本學力要求在此次配對中未被使用：</p><ul class="unmapped-list">';
+                data.unmapped_requirements.forEach(req => {
+                    // 嘗試分離編號與內容以加粗編號
+                    const match = req.match(/^([A-Z]－?\d+)(.*)/);
+                    if (match) {
+                        unmappedHtml += `<li><strong>${match[1]}</strong> ${match[2]}</li>`;
+                    } else {
+                        unmappedHtml += `<li>${req}</li>`;
+                    }
+                });
+                unmappedHtml += '</ul>';
+                unmappedDiv.innerHTML = unmappedHtml;
+            } else {
+                unmappedDiv.innerHTML = '<p class="initial-message" style="color:#27ae60;">太棒了！大部分學力要求都已涵蓋（或 AI 判斷無剩餘顯著項目）。</p>';
+            }
+        }
+    </script>
+</body>
+</html>
