@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>百分位數互動學習工具 (Pₖ)</title>
+    <!-- 載入 Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+        }
+        /* 確保滑桿樣式在不同瀏覽器中一致 */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 8px;
+            background: #cbd5e1;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #1e40af; /* 藍色 */
+            cursor: pointer;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+        }
+
+        /* NEW: 數據點容器 - 移除滾動條，允許垂直增長 */
+        #dataWrapper {
+            max-height: none; 
+            overflow: visible; /* 確保沒有滾動條 */
+            padding: 1rem;
+            border-radius: 8px;
+            background-color: #ffffff;
+        }
+
+        /* NEW: 數據項容器 (每個 Rank/Value 組) 樣式 */
+        .data-item-container {
+            width: 80px; /* 固定的寬度讓每個數據組件看起來像一個小卡片 */
+            padding: 8px 0;
+            border-radius: 8px;
+            background-color: #f9fafb;
+            border: 1px solid #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: all 0.2s ease;
+        }
+        
+        /* 排名樣式 */
+        .data-rank {
+            font-size: 0.75rem; /* text-xs */
+            color: #6b7280; /* text-gray-500 */
+            margin-bottom: 2px;
+        }
+        
+        /* 數值樣式 */
+        .data-point {
+            display: block; 
+            padding: 2px 4px;
+            border-radius: 4px;
+            background-color: transparent; 
+            font-weight: 600;
+            font-size: 0.875rem; /* text-sm */
+            color: #333;
+            transition: all 0.2s ease;
+            cursor: default;
+            margin: 0; 
+        }
+        
+        /* 高亮樣式 - 應用在整個容器 */
+        .highlighted {
+            transform: scale(1.05);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-color: #38a169;
+        }
+        /* 高亮樣式 - 應用在數值上 */
+        .highlighted .data-point {
+            background-color: #38a169; /* 綠色 */
+            color: white;
+        }
+
+        /* 移除舊有水平表格的樣式 (不再需要) */
+    </style>
+</head>
+<body class="p-4 md:p-8 max-w-5xl mx-auto">
+
+    <!-- 標題已更新為 Pₖ -->
+    <h1 class="text-3xl font-bold text-gray-800 mb-6 border-b-2 pb-2">百分位數互動學習工具 (Pₖ)</h1>
+
+    <!-- 1. 說明區 - 新增百分位數的作用解釋 -->
+    <div class="bg-blue-100 border-l-4 border-blue-500 text-blue-800 p-4 rounded-lg mb-6">
+        <p class="font-semibold mb-2">📊 學習目標：理解 Pₖ 劃分數據集的意義</p>
+
+        <!-- 新增: 百分位數在溫度分析中的作用 -->
+        <p class="mt-4 font-semibold text-blue-900">🔍 百分位數在溫度分析中的作用：</p>
+        <p class="mb-4 text-sm">
+            在分析溫度數據時，百分位數（Pₖ）能幫助我們了解溫度分佈的極端和常態。例如：
+        </p>
+        <ul class="list-disc list-inside ml-4 text-sm">
+            <li>**P₉₅ (第 95 位數)**：代表只有 5% 的時間溫度比這個值高，可用來設定高溫警戒線。</li>
+            <li>**P₅₀ (第 50 位數 / 中位數)**：代表數據集的「典型」溫度。</li>
+            <li>**P₅ (第 5 位數)**：代表只有 5% 的時間溫度比這個值低，可用來設定低溫警戒線。</li>
+        </ul>
+        <!-- 結束新增 -->
+
+        <p class="mt-4">請拖曳下方的「百分位數 k」滑桿（0 到 100）。當您選擇一個百分位數 Pₖ 時，系統會：</p>
+        <ul class="list-disc list-inside ml-4 mt-2">
+            <li>計算出對應的 **百分位數數值 (Pₖ 值)**。</li>
+            <li>在排序後的數據中，**高亮**顯示所有低於或等於該 Pₖ 值的數據點。</li>
+        </ul>
+    </div>
+
+    <!-- 2. 滑桿控制區 -->
+    <div class="bg-white p-6 rounded-xl shadow-lg mb-6">
+        <label for="percentileSlider" class="block text-lg font-semibold mb-2">
+            拖曳設定百分位數 k：
+        </label>
+        <input type="range" id="percentileSlider" min="0" max="100" value="50"> 
+        <div class="flex justify-between text-sm text-gray-600 mt-2">
+            <!-- P₀ 和 P₁₀₀ 保持 Unicode 下標 -->
+            <span>P₀ (最小值)</span>
+            <span id="currentK" class="text-xl font-bold text-blue-600">P₅₀</span>
+            <span>P₁₀₀ (最大值)</span>
+        </div>
+
+        <div id="resultBox" class="mt-4 p-3 bg-indigo-50 border border-indigo-200 rounded-lg">
+            <p class="text-indigo-800"><strong id="percentileValue" class="text-2xl font-extrabold mr-2">--</strong></p>
+            <p class="text-sm mt-1 text-indigo-700" id="interpretation">請拖曳滑桿以查看結果。</p>
+        </div>
+    </div>
+
+    <!-- 3. 數據呈現區 (已修改為響應式網格) -->
+    <div class="bg-white p-6 rounded-xl shadow-lg">
+        <!-- 溫度符號已更新為 °C -->
+        <h2 class="text-xl font-semibold mb-3">排序後的溫度數據 (°C)</h2>
+        <!-- 使用 Flexbox 搭配 flex-wrap 實現完整顯示，避免滾動條 -->
+        <div id="dataWrapper" class="flex flex-wrap gap-3 justify-start p-4 border border-gray-200 rounded-lg bg-gray-50">
+            <!-- 數據點將由 JavaScript 動態生成 -->
+        </div>
+        <p class="text-sm mt-3 text-gray-500">
+            數據總數 N: <span id="dataCount">--</span> 筆 (已從小到大排列)
+        </p>
+    </div>
+    
+    <!-- 4. 原始輸入數據區 -->
+    <div class="bg-white p-6 rounded-xl shadow-lg mt-6">
+        <button id="toggleRawData" class="text-lg font-semibold text-gray-700 w-full text-left py-2 flex justify-between items-center hover:text-blue-600 transition" onclick="toggleRawData()">
+            點擊查看原始輸入數據 (N=28) 
+            <span id="toggleIcon">▼</span>
+        </button>
+        <div id="rawInputData" class="hidden mt-3 p-4 bg-gray-50 border border-gray-200 rounded-lg max-h-48 overflow-y-auto text-sm">
+            <p class="font-mono text-gray-700 break-words" id="rawDataList"></p>
+        </div>
+    </div>
+
+<script>
+    // 原始溫度數據
+    const rawData = [
+        32.00, 32.00, 35.00, 33.00, 33.00, 33.00, 29.00, 33.00, 
+        33.00, 33.00, 32.00, 32.00, 32.00, 32.00, 33.00, 32.00, 
+        32.00, 32.00, 33.00, 33.00, 33.00, 32.00, 31.00, 31.00, 
+        31.00, 31.00, 30.00, 30.00
+    ];
+
+    // 1. 排序數據並計算總數 N
+    const sortedData = [...rawData].sort((a, b) => a - b);
+    const DATA_COUNT = sortedData.length;
+
+    // Helper function to convert number to Unicode subscript (e.g., 50 -> ₅₀)
+    function toUnicodeSubscript(n) {
+        return n.toString().split('').map(digit => {
+            switch (digit) {
+                case '0': return '₀';
+                case '1': return '₁';
+                case '2': return '₂';
+                case '3': return '₃';
+                case '4': return '₄';
+                case '5': return '₅';
+                case '6': return '₆';
+                case '7': return '₇';
+                case '8': return '₈';
+                case '9': return '₉';
+                default: return digit;
+            }
+        }).join('');
+    }
+
+    // 2. 渲染數據點到 HTML (已更新為響應式網格佈局)
+    function renderDataPoints() {
+        // 更新顯示的數據總數
+        document.getElementById('dataCount').textContent = DATA_COUNT;
+        
+        const dataWrapper = document.getElementById('dataWrapper');
+        dataWrapper.innerHTML = ''; // 清空內容
+
+        sortedData.forEach((temp, index) => {
+            
+            // 創建包含排名和數值的容器
+            const itemContainer = document.createElement('div');
+            itemContainer.className = 'data-item-container';
+            itemContainer.id = `dp-container-${index}`; // 設置容器 ID
+            
+            // 排名 (Rank)
+            const rankLabel = document.createElement('div');
+            rankLabel.className = 'data-rank';
+            rankLabel.textContent = `Rank ${index + 1}`; 
+            
+            // 數值 (Value)
+            const point = document.createElement('span');
+            point.className = 'data-point';
+            point.id = `dp-${index}`; // 設置 ID 方便高亮
+            point.textContent = temp.toFixed(2);
+            
+            itemContainer.appendChild(rankLabel);
+            itemContainer.appendChild(point);
+            dataWrapper.appendChild(itemContainer);
+        });
+        
+        // 渲染原始數據清單到可展開區
+        const rawDataListElement = document.getElementById('rawDataList');
+        rawDataListElement.textContent = rawData.map(d => d.toFixed(2)).join(', ');
+    }
+
+    // 切換原始數據可見性的函數
+    function toggleRawData() {
+        const rawDataContainer = document.getElementById('rawInputData');
+        const toggleIcon = document.getElementById('toggleIcon');
+        if (rawDataContainer.classList.contains('hidden')) {
+            rawDataContainer.classList.remove('hidden');
+            toggleIcon.textContent = '▲';
+        } else {
+            rawDataContainer.classList.add('hidden');
+            toggleIcon.textContent = '▼';
+        }
+    }
+
+
+    // 3. 百分位數計算核心函數 (R-6/N+1 方法 - 保持不變)
+    function calculatePercentile(k) {
+        if (k === 0) return sortedData[0];
+        if (k === 100) return sortedData[DATA_COUNT - 1];
+
+        const L = (k / 100) * (DATA_COUNT + 1);
+        const j = Math.floor(L); 
+        const g = L - j;
+
+        if (j < 1) return sortedData[0];
+        if (j >= DATA_COUNT) return sortedData[DATA_COUNT - 1]; 
+
+        if (g === 0) {
+            return sortedData[j - 1]; 
+        } else {
+            const X_j = sortedData[j - 1]; 
+            const X_j_plus_1 = sortedData[j]; 
+
+            return X_j + g * (X_j_plus_1 - X_j);
+        }
+    }
+
+    // 4. 更新 UI 和高亮
+    function updatePercentile(k) {
+        k = parseInt(k);
+
+        // 1. 更新滑桿顯示 (使用 Unicode 下標)
+        document.getElementById('currentK').textContent = `P${toUnicodeSubscript(k)}`;
+
+        // 2. 計算 P_k 值
+        const pkValue = calculatePercentile(k);
+        const pkValueFormatted = pkValue.toFixed(2);
+
+        // --- 🎯 格式: ｘｘ位數 = ｘｘ °C ---
+        document.getElementById('percentileValue').textContent = `${k}位數 = ${pkValueFormatted} °C`;
+
+        // 3. 更新解釋文字
+        // --- 🎯 格式: 這表示有ｘｘ% 的溫度小於或等於 ｘｘ °C。 ---
+        let interpretationText = `這表示有 ${k}% 的溫度小於或等於 ${pkValueFormatted} °C。`;
+
+        // 可選：對於特殊分位數（四分位數），添加額外說明 (使用 Unicode 下標)
+        if (k === 50) {
+            interpretationText += ` (這是數據的中位數 Q₂)`;
+        } else if (k === 25) {
+            interpretationText += ` (這是數據的下四分位數 Q₁)`;
+        } else if (k === 75) {
+            interpretationText += ` (這是數據的上四分位數 Q₃)`;
+        }
+
+        document.getElementById('interpretation').textContent = interpretationText;
+
+        // 4. 數據點高亮 (高亮其父容器)
+        const dataPoints = document.querySelectorAll('.data-point');
+        const dataItemContainers = document.querySelectorAll('.data-item-container');
+
+        // Reset all highlighting
+        dataItemContainers.forEach(container => container.classList.remove('highlighted'));
+
+        dataPoints.forEach((point) => {
+            const temp = parseFloat(point.textContent);
+            
+            if (temp <= pkValue) {
+                // Highlighting the parent container
+                point.closest('.data-item-container').classList.add('highlighted');
+            }
+        });
+
+        // 5. 滾動邏輯已移除，因為不再有水平滾動條
+    }
+
+    // 5. 初始化應用程式 - 在視窗載入完成後執行
+    window.onload = function() {
+        // 確保函數在全局作用域中
+        window.toggleRawData = toggleRawData;
+        
+        renderDataPoints();
+        
+        // 獲取滑桿元素
+        const slider = document.getElementById('percentileSlider');
+
+        // 以程式化方式添加事件監聽器
+        slider.addEventListener('input', (event) => {
+            updatePercentile(event.target.value);
+        });
+
+        // 初始設定為中位數 P50
+        updatePercentile(50); 
+    };
+</script>
+
+</body>
+</html>

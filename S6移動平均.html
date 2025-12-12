@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chart.js 移動平均演示 (N=4)</title>
+    <!-- 載入 Tailwind CSS CDN for modern styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 載入 Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+    
+    <style>
+        /* 基礎樣式和字體 */
+        body {
+            font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f7f6;
+            color: #333;
+        }
+        h1 {
+            color: #0056b3;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e0f7fa;
+            font-size: 1.8rem;
+            margin-bottom: 15px;
+        }
+        /* 圖表容器 */
+        #chartContainer {
+            width: 100%; 
+            max-width: 800px;
+            margin: 20px auto 0;
+            border: 1px solid #ccc;
+            background-color: #fff;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+            border-radius: 12px;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        /* 控制按鈕樣式 */
+        .btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+        .btn-start { background-color: #28a745; color: white; }
+        .btn-stop { background-color: #ffc107; color: #333; }
+        .btn-reset { background-color: #007bff; color: white; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .info-box {
+            margin-top: 25px;
+            border-radius: 8px;
+        }
+
+        /* 表格高亮樣式 - 當前計算的原始數據點 */
+        .highlight-active-raw {
+            background-color: #d1fae5 !important; /* 綠色背景 */
+            font-weight: 600;
+            color: #065f46 !important; /* 深綠色文字 */
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        /* 表格高亮樣式 - 計算出的移動平均值 */
+        .highlight-ma {
+            background-color: #bfdbfe !important; /* 藍色背景 */
+            font-weight: 600;
+            color: #1e40af !important; /* 深藍色文字 */
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <h1>數據可視化：移動平均動畫演示 (N=4)</h1>
+
+    <div class="flex flex-wrap gap-4 mb-4 items-center">
+        <div class="legend">
+            <span class="legend-item text-red-600">■ 原始溫度 (Raw)</span>
+            <span class="legend-item text-blue-600">■ 移動平均 (MA)</span>
+            <span class="legend-item text-green-600">■ 當前計算窗口 (Active)</span>
+        </div>
+    </div>
+    
+    <!-- 控制按鈕 -->
+    <div id="controls" class="flex flex-wrap gap-4 mb-6">
+        <button id="startButton" class="btn btn-start" onclick="startAnimation()">開始演示</button>
+        <button id="stopButton" class="btn btn-stop" onclick="stopAnimation()" disabled>暫停演示</button>
+        <button id="resetButton" class="btn btn-reset" onclick="resetChart()" disabled>重置</button>
+    </div>
+
+    <!-- 圖表顯示區 -->
+    <div id="chartContainer" class="rounded-xl">
+        <canvas id="tempChart"></canvas>
+    </div>
+
+    <!-- 計算說明區 -->
+    <div id="explanationBox" class="info-box p-4 bg-yellow-100 border-l-4 border-yellow-500">
+        <h3 class="text-lg font-semibold text-yellow-800" id="windowDetails">N=4 窗口</h3>
+        <p id="calculationDetails" class="mt-2 text-yellow-700">點擊「開始演示」觀看移動平均的計算過程和數據平滑效果。</p>
+    </div>
+
+    <!-- 數據表格容器 (已修改為水平呈現) -->
+    <div id="dataTableContainer" class="mt-8 mx-auto max-w-4xl">
+        <h3 class="text-xl font-semibold mb-3 text-gray-700">同步數據明細表 (N=4) - 水平呈現</h3>
+        <!-- 使用 overflow-x-auto 實現水平滾動 -->
+        <div id="tableWrapper" class="max-h-96 overflow-y-hidden overflow-x-auto rounded-lg border border-gray-300 shadow-md">
+            <!-- 增加 whitespace-nowrap 確保表格不會換行 -->
+            <table id="dataTable" class="bg-white whitespace-nowrap">
+                <!-- Table content will be rendered by JavaScript -->
+            </table>
+        </div>
+    </div>
+    <!-- 數據表格容器結束 -->
+
+
+    <script>
+        // 1. 數據準備
+        const rawData = [
+            { time: "11:15", temp: 32.00 }, { time: "11:30", temp: 32.00 }, 
+            { time: "11:45", temp: 35.00 }, { time: "12:00", temp: 33.00 }, 
+            { time: "12:15", temp: 33.00 }, { time: "12:30", temp: 33.00 }, 
+            { time: "12:45", temp: 29.00 }, { time: "13:00", temp: 33.00 }, 
+            { time: "13:15", temp: 33.00 }, { time: "13:30", temp: 33.00 }, 
+            { time: "13:45", temp: 32.00 }, { time: "14:00", temp: 32.00 }, 
+            { time: "14:15", temp: 32.00 }, { time: "14:30", temp: 32.00 }, 
+            { time: "14:45", temp: 33.00 }, { time: "15:00", temp: 32.00 }, 
+            { time: "15:15", temp: 32.00 }, { time: "15:30", temp: 32.00 }, 
+            { time: "15:45", temp: 33.00 }, { time: "16:00", temp: 33.00 }, 
+            { time: "16:15", temp: 33.00 }, { time: "16:30", temp: 32.00 }, 
+            { time: "16:45", temp: 31.00 }, { time: "17:00", temp: 31.00 }, 
+            { time: "17:15", temp: 31.00 }, { time: "17:30", temp: 31.00 }, 
+            { time: "17:45", temp: 30.00 }, { time: "18:00", temp: 30.00 }
+        ];
+
+        const WINDOW_SIZE = 4;
+        const MA_DATA = [];
+        const labels = rawData.map(d => d.time);
+        const rawTemps = rawData.map(d => d.temp);
+        
+        // 2. 計算移動平均 (預先計算所有值)
+        function calculateMovingAverage() {
+            MA_DATA.length = 0; 
+            for (let i = 0; i < rawData.length; i++) {
+                const start = Math.max(0, i - WINDOW_SIZE + 1);
+                let sum = 0;
+                let count = 0;
+                
+                for (let j = start; j <= i; j++) {
+                    sum += rawData[j].temp;
+                    count++;
+                }
+                MA_DATA.push(sum / count);
+            }
+        }
+
+        // 3. 渲染數據表格 (水平呈現/轉置)
+        function renderTable() {
+            // 定義表格的行標題
+            const rowHeaders = [
+                '時間 (Time)', 
+                '原始溫度 (°C)', 
+                '移動平均 (MA)'
+            ];
+
+            let tableHTML = `
+                <thead>
+                    <tr class="bg-gray-200 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider sticky top-0">
+                        <th class="px-4 py-3 min-w-[150px]">指標 (Metric)</th>
+            `;
+            
+            // 生成列標題 (數據點索引 1, 2, 3, ...)
+            for (let i = 0; i < rawData.length; i++) {
+                tableHTML += `<th class="px-4 py-3 text-center min-w-[80px]">${i + 1}</th>`;
+            }
+            tableHTML += `
+                    </tr>
+                </thead>
+                <tbody id="tableBody" class="divide-y divide-gray-200 text-sm">
+            `;
+
+            // Row 1: 時間 (Time)
+            tableHTML += `<tr class="hover:bg-gray-50 border-b border-gray-300"><td class="px-4 py-2 font-semibold whitespace-nowrap">${rowHeaders[0]}</td>`;
+            for (let i = 0; i < rawData.length; i++) {
+                tableHTML += `<td class="px-4 py-2 whitespace-nowrap text-center">${rawData[i].time}</td>`;
+            }
+            tableHTML += `</tr>`;
+            
+            // Row 2: 原始溫度 (Raw Temperature)
+            tableHTML += `<tr class="hover:bg-gray-50 border-b border-gray-300"><td class="px-4 py-2 font-semibold whitespace-nowrap text-red-600">${rowHeaders[1]}</td>`;
+            for (let i = 0; i < rawData.length; i++) {
+                // 使用新的 ID 格式 for 橫向表格
+                tableHTML += `<td id="raw-data-${i}" class="px-4 py-2 whitespace-nowrap text-center text-red-600">${rawData[i].temp.toFixed(2)}</td>`;
+            }
+            tableHTML += `</tr>`;
+
+            // Row 3: 移動平均 (Moving Average)
+            tableHTML += `<tr class="hover:bg-gray-50"><td class="px-4 py-2 font-semibold whitespace-nowrap text-blue-600">${rowHeaders[2]}</td>`;
+            for (let i = 0; i < rawData.length; i++) {
+                const maValue = MA_DATA[i] ? MA_DATA[i].toFixed(2) : '--';
+                // 使用新的 ID 格式 for 橫向表格
+                tableHTML += `<td id="ma-data-${i}" class="px-4 py-2 whitespace-nowrap text-center text-blue-600">${maValue}</td>`;
+            }
+            tableHTML += `</tr>`;
+
+            tableHTML += `
+                </tbody>
+            `;
+
+            document.getElementById('dataTable').innerHTML = tableHTML;
+        }
+
+        // --- Chart.js 相關變數和初始化 (與之前保持一致) ---
+        let chartInstance = null;
+        let stepIndex = 0;
+        let animationInterval = null;
+        const SPEED = 1000; // 1秒/步
+
+        let rawPointBackgrounds = [];
+        let maPointBackgrounds = [];
+
+        function initializeChart() {
+            // 確保 MA 數據已計算
+            calculateMovingAverage();
+            // 渲染表格 (使用新的水平函數)
+            renderTable();
+
+            // 初始化點顏色數組 (所有點默認為非活動色或透明)
+            rawPointBackgrounds = Array(rawData.length).fill('rgba(220, 53, 69, 0.7)'); 
+            maPointBackgrounds = Array(rawData.length).fill('rgba(0, 123, 255, 0)'); 
+
+            const ctx = document.getElementById('tempChart').getContext('2d');
+            
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            // Chart.js 配置
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: '原始溫度',
+                            data: rawTemps,
+                            borderColor: 'rgba(220, 53, 69, 0.5)',
+                            backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                            borderWidth: 1.5,
+                            pointRadius: 4,
+                            pointBackgroundColor: rawPointBackgrounds, // 用於高亮
+                            pointBorderColor: 'transparent',
+                            tension: 0, // 直線連接
+                            spanGaps: true,
+                        },
+                        {
+                            label: '移動平均 (N=4)',
+                            data: MA_DATA,
+                            borderColor: 'rgba(0, 123, 255, 1)',
+                            backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                            borderWidth: 3,
+                            pointRadius: 6,
+                            pointBackgroundColor: maPointBackgrounds, // 用於高亮
+                            pointBorderColor: 'white',
+                            pointBorderWidth: 2,
+                            tension: 0.1, // 略微平滑 MA 線條
+                            fill: false,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: {
+                        duration: 500, // 每次更新的動畫時間
+                    },
+                    scales: {
+                        x: {
+                            title: { display: true, text: '時間' },
+                            ticks: { 
+                                // 僅顯示部分 X 軸標籤以避免擁擠
+                                callback: function(val, index) {
+                                    return index % 3 === 0 ? this.getLabelForValue(val) : '';
+                                },
+                            }
+                        },
+                        y: {
+                            title: { display: true, text: '溫度 (°C)' },
+                            min: 25, 
+                            max: 40,
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false }, // 由於我們有自定義圖例，關閉內建圖例
+                        tooltip: { mode: 'index', intersect: false }
+                    }
+                }
+            });
+            
+            // 設置初始狀態
+            updateChartStep(stepIndex);
+        }
+
+        // 4. 動畫控制和更新邏輯
+        function updateChartStep(index) {
+            
+            // 1. 重置顏色並設置默認值
+            rawPointBackgrounds = Array(rawData.length).fill('rgba(220, 53, 69, 0.7)'); 
+            maPointBackgrounds = Array(rawData.length).fill('rgba(0, 123, 255, 0)'); 
+
+            // 2. 清除表格所有高亮
+            document.querySelectorAll('#tableBody td').forEach(cell => {
+                cell.classList.remove('highlight-active-raw', 'highlight-ma');
+            });
+
+            let calculationText = '';
+
+            if (index < rawData.length) {
+                const start = Math.max(0, index - WINDOW_SIZE + 1);
+                const currentWindow = rawData.slice(start, index + 1);
+                
+                // 3. 高亮圖表和表格的當前計算窗口 (綠色)
+                let sumValues = [];
+                for (let j = start; j <= index; j++) {
+                    // 圖表高亮 (綠色)
+                    rawPointBackgrounds[j] = 'rgba(40, 167, 69, 1)'; 
+                    sumValues.push(rawData[j].temp);
+
+                    // 表格高亮 (綠色) - 使用新的 ID raw-data-${j}
+                    const rawCell = document.getElementById(`raw-data-${j}`);
+                    if (rawCell) {
+                        rawCell.classList.add('highlight-active-raw');
+                    }
+                }
+                
+                // 4. 高亮圖表和表格的計算出的 MA 點 (藍色)
+                maPointBackgrounds[index] = 'rgba(0, 123, 255, 1)'; 
+
+                // 表格高亮 (藍色) - 使用新的 ID ma-data-${index}
+                const maCell = document.getElementById(`ma-data-${index}`);
+                if (maCell) {
+                    maCell.classList.add('highlight-ma'); 
+                }
+
+
+                // 5. 生成計算解釋
+                const sumText = sumValues.map(t => t.toFixed(2)).join(' + ');
+                const divisor = currentWindow.length;
+                const result = MA_DATA[index].toFixed(2);
+                
+                calculationText = `
+                    <strong class="text-xl">當前時間:</strong> ${rawData[index].time} <br>
+                    <strong class="text-green-700">窗口數據 (N=${divisor}):</strong> [${sumText}] <br>
+                    <strong class="text-lg">計算過程:</strong> (${sumText}) / ${divisor} <br>
+                    <strong class="text-blue-600 text-2xl">MA 值: ${result}</strong>
+                `;
+            } else {
+                 calculationText = '<strong class="text-xl text-green-700">演示結束。</strong> <br> 移動平均線 (藍色實線) 完美地平滑了原始數據 (紅色虛線) 的波動。';
+            }
+
+
+            // 6. 更新 Chart.js 數據並重繪
+            chartInstance.data.datasets[0].pointBackgroundColor = rawPointBackgrounds;
+            chartInstance.data.datasets[1].pointBackgroundColor = maPointBackgrounds;
+            chartInstance.update('none'); 
+
+            // 7. 更新解釋框
+            document.getElementById('calculationDetails').innerHTML = calculationText;
+            document.getElementById('windowDetails').textContent = `N=${WINDOW_SIZE} 窗口 (當前數據點: ${Math.min(index + 1, rawData.length)}/${rawData.length})`;
+
+            // 8. 滾動到當前列 (確保表格中的 MA 點可見)
+            const tableWrapper = document.getElementById('tableWrapper');
+            if (tableWrapper && index >= 0) {
+                // 找到當前數據點的列標題 (位於 thead，th:nth-child(${index + 2}) 因為第一個是指標標題)
+                const currentColumnHeader = document.getElementById('dataTable').querySelector(`thead th:nth-child(${index + 2})`); 
+                
+                if (currentColumnHeader) {
+                    const targetOffset = currentColumnHeader.offsetLeft;
+                    const containerWidth = tableWrapper.clientWidth;
+                    
+                    // 計算滾動位置，將目標列大致置中
+                    tableWrapper.scrollLeft = targetOffset - (containerWidth / 2) + (currentColumnHeader.clientWidth / 2);
+                }
+            }
+
+        }
+
+        // 9. 動畫控制功能 (與之前保持一致)
+        function startAnimation() {
+            if (animationInterval) return;
+            
+            // 重置按鈕狀態
+            document.getElementById('startButton').disabled = true;
+            document.getElementById('stopButton').disabled = false;
+            document.getElementById('resetButton').disabled = true;
+
+            animationInterval = setInterval(() => {
+                if (stepIndex >= rawData.length) {
+                    stopAnimation();
+                    document.getElementById('resetButton').disabled = false;
+                    return;
+                }
+                updateChartStep(stepIndex);
+                stepIndex++;
+            }, SPEED);
+        }
+
+        function stopAnimation() {
+            clearInterval(animationInterval);
+            animationInterval = null;
+            
+            // 更新按鈕狀態
+            document.getElementById('startButton').disabled = false;
+            document.getElementById('stopButton').disabled = true;
+            document.getElementById('resetButton').disabled = false;
+        }
+
+        function resetChart() {
+            stopAnimation();
+            stepIndex = 0;
+            initializeChart(); // 重新初始化圖表
+            
+            document.getElementById('startButton').disabled = false;
+            document.getElementById('stopButton').disabled = true;
+            document.getElementById('resetButton').disabled = true;
+        }
+
+        // 頁面載入時初始化圖表
+        window.onload = function() {
+            // 設置 chartContainer 的高度，以確保 Chart.js 在響應式佈局中有正確的繪製空間
+            document.getElementById('chartContainer').style.height = document.getElementById('chartContainer').clientWidth * 0.5 + 'px';
+            initializeChart();
+        }
+
+        // 處理窗口大小變化時的重新繪製
+        window.addEventListener('resize', function() {
+             document.getElementById('chartContainer').style.height = document.getElementById('chartContainer').clientWidth * 0.5 + 'px';
+             if (chartInstance) {
+                chartInstance.resize();
+             }
+        });
+
+    </script>
+
+</body>
+</html>
