@@ -2,225 +2,703 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Micro:bit V1 功能互動導覽</title>
-    <!-- 載入 Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>AR 圖像辨識應用</title>
+    
     <style>
-        /* 設定 Inter 字體 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f7fafc; /* 淺灰色背景 */
-        }
-        /* 定義功能清單項目的動畫效果 */
-        .feature-item {
-            cursor: pointer;
-            transition: background-color 0.2s, box-shadow 0.2s, transform 0.2s;
-        }
-        .feature-item:hover {
-            background-color: #f0f4f8; /* 懸停時顏色變深 */
-            transform: translateY(-2px);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
-        }
-        .feature-description {
-            max-height: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             overflow: hidden;
-            transition: max-height 0.5s ease-in-out, padding 0.5s ease-in-out;
-            padding-top: 0;
-            padding-bottom: 0;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
         }
-        .feature-description.open {
-            max-height: 200px; /* 設置一個足夠大的值 */
-            padding-top: 0.5rem;
-            padding-bottom: 0.5rem;
+        
+        /* 主畫面 */
+        #main-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            z-index: 1000;
+        }
+        
+        #main-screen.hidden {
+            display: none;
+        }
+        
+        #main-screen h1 {
+            color: #fff;
+            font-size: 32px;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        
+        #main-screen .subtitle {
+            color: rgba(255,255,255,0.7);
+            font-size: 16px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        /* 狀態卡片 */
+        .status-card {
+            background: rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 20px;
+            width: 100%;
+            max-width: 350px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .status-card h3 {
+            color: #fff;
+            font-size: 14px;
+            margin-bottom: 15px;
+            opacity: 0.8;
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .status-item:last-child {
+            border-bottom: none;
+        }
+        
+        .status-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            font-size: 18px;
+        }
+        
+        .status-icon.checking {
+            background: rgba(255,255,255,0.2);
+        }
+        
+        .status-icon.success {
+            background: rgba(74, 222, 128, 0.2);
+        }
+        
+        .status-icon.error {
+            background: rgba(248, 113, 113, 0.2);
+        }
+        
+        .status-icon.warning {
+            background: rgba(251, 191, 36, 0.2);
+        }
+        
+        .status-text {
+            flex: 1;
+        }
+        
+        .status-text .label {
+            color: #fff;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .status-text .detail {
+            color: rgba(255,255,255,0.6);
+            font-size: 12px;
+            margin-top: 2px;
+        }
+        
+        /* 按鈕 */
+        .btn {
+            background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%);
+            color: #fff;
+            border: none;
+            padding: 16px 48px;
+            font-size: 18px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 20px rgba(0, 212, 255, 0.4);
+            margin: 10px;
+        }
+        
+        .btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 30px rgba(0, 212, 255, 0.6);
+        }
+        
+        .btn:disabled {
+            background: #666;
+            box-shadow: none;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-secondary {
+            background: rgba(255,255,255,0.2);
+            box-shadow: none;
+        }
+        
+        .btn-secondary:hover {
+            background: rgba(255,255,255,0.3);
+            box-shadow: none;
+        }
+        
+        /* 說明區塊 */
+        .help-section {
+            background: rgba(255,255,255,0.05);
+            border-radius: 16px;
+            padding: 20px;
+            width: 100%;
+            max-width: 350px;
+            margin-top: 20px;
+        }
+        
+        .help-section h3 {
+            color: #00d4ff;
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+        
+        .help-section p {
+            color: rgba(255,255,255,0.8);
+            font-size: 13px;
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+        
+        .help-section code {
+            background: rgba(0,212,255,0.2);
+            padding: 2px 8px;
+            border-radius: 4px;
+            color: #00d4ff;
+            font-family: monospace;
+        }
+        
+        .help-section a {
+            color: #00d4ff;
+        }
+        
+        /* 載入動畫 */
+        .loader {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255,255,255,0.1);
+            border-top-color: #00d4ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* AR 場景容器 */
+        #ar-container {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        #ar-container.active {
+            display: block;
+        }
+        
+        /* AR UI */
+        #ar-ui {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 100;
+            display: none;
+        }
+        
+        #ar-status {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-size: 14px;
+            backdrop-filter: blur(10px);
+        }
+        
+        #ar-status.found {
+            background: rgba(34, 197, 94, 0.8);
+        }
+        
+        #scan-hint {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 14px;
+            backdrop-filter: blur(10px);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        #back-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.9);
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            pointer-events: auto;
+        }
+        
+        #controls {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            pointer-events: auto;
+        }
+        
+        .control-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(255,255,255,0.9);
+            font-size: 20px;
+            cursor: pointer;
         }
     </style>
 </head>
 <body>
-
-    <div id="app" class="min-h-screen p-4 md:p-8">
-        <header class="text-center mb-8">
-            <h1 class="text-4xl font-extrabold text-blue-800 tracking-tight">
-                BBC Micro:bit V1 功能總覽
-            </h1>
-            <p class="text-xl text-gray-600 mt-2">點擊功能名稱以查看詳細簡介</p>
-            <div class="h-1 bg-blue-400 w-24 mx-auto rounded-full mt-3"></div>
-        </header>
-
-        <!-- 主要內容區塊：兩欄佈局 -->
-        <!-- 確保 sticky 定位不會被 items-stretch 破壞 -->
-        <div class="flex flex-col lg:flex-row lg:items-start gap-8 max-w-7xl mx-auto">
-
-            <!-- 左側：圖片區 (黏性定位) -->
-            <div class="lg:w-1/2 lg:sticky lg:top-8 space-y-6">
-                
-                <!-- 正面圖片 -->
-                <div class="bg-white p-4 rounded-xl shadow-lg border border-gray-200">
-                    <h2 class="text-2xl font-semibold mb-3 text-blue-700">Micro:bit V1 正面</h2>
-                    <!-- 修正: 移除 aspect-square，讓容器高度由圖片原始比例決定 -->
-                    <div class="w-full bg-gray-300 rounded-lg flex items-center justify-center overflow-hidden">
-                        <!-- 佔位圖片 (請替換為實際圖片 URL) -->
-                        <img src="microbit_Front.png" 
-                             alt="Micro:bit V1 正面示意圖" 
-                             class="w-full h-auto object-cover"
-                             onerror="this.onerror=null; this.src='https://placehold.co/400x300/4c51bf/ffffff?text=正面圖片佔位 (原比例)';">
-                    </div>
-                    <p class="text-sm text-gray-500 mt-2 text-center">（請將此處替換為 Micro:bit V1 正面圖片）</p>
-                </div>
-
-                <!-- 背面圖片 -->
-                <div class="bg-white p-4 rounded-xl shadow-lg border border-gray-200">
-                    <h2 class="text-2xl font-semibold mb-3 text-blue-700">Micro:bit V1 背面</h2>
-                    <!-- 修正: 移除 aspect-square，讓容器高度由圖片原始比例決定 -->
-                    <div class="w-full bg-gray-300 rounded-lg flex items-center justify-center overflow-hidden">
-                        <!-- 佔位圖片 (請替換為實際圖片 URL) -->
-                         <img src="microbit_Back.png" 
-                             alt="Micro:bit V1 背面示意圖" 
-                             class="w-full h-auto object-cover"
-                             onerror="this.onerror=null; this.src='https://placehold.co/400x300/10b981/ffffff?text=背面圖片佔位 (原比例)';">
-                    </div>
-                    <p class="text-sm text-gray-500 mt-2 text-center">（請將此處替換為 Micro:bit V1 背面圖片）</p>
+    <!-- 主畫面 -->
+    <div id="main-screen">
+        <h1>📷 AR 圖像辨識</h1>
+        <p class="subtitle">掃描目標圖像顯示 3D 模型</p>
+        
+        <!-- 狀態檢測 -->
+        <div class="status-card">
+            <h3>📋 環境檢測</h3>
+            
+            <div class="status-item">
+                <div class="status-icon checking" id="https-icon">🔒</div>
+                <div class="status-text">
+                    <div class="label">安全連線</div>
+                    <div class="detail" id="https-detail">檢查中...</div>
                 </div>
             </div>
-
-            <!-- 右側：功能清單區 -->
-            <div class="lg:w-1/2 space-y-6">
-                <!-- 正面功能清單 -->
-                <div class="bg-white p-6 rounded-xl shadow-2xl">
-                    <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2 border-blue-200">
-                        <span class="mr-2">💡</span> 正面功能
-                    </h2>
-                    <div id="front-features" class="space-y-3">
-                        <!-- 功能列表將由 JavaScript 填充 -->
-                    </div>
+            
+            <div class="status-item">
+                <div class="status-icon checking" id="camera-icon">📷</div>
+                <div class="status-text">
+                    <div class="label">相機</div>
+                    <div class="detail" id="camera-detail">檢查中...</div>
                 </div>
-
-                <!-- 背面功能清單 -->
-                <div class="bg-white p-6 rounded-xl shadow-2xl">
-                    <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2 border-green-200">
-                        <span class="mr-2">⚙️</span> 背面功能
-                    </h2>
-                    <div id="back-features" class="space-y-3">
-                        <!-- 功能列表將由 JavaScript 填充 -->
-                    </div>
+            </div>
+            
+            <div class="status-item">
+                <div class="status-icon checking" id="target-icon">🎯</div>
+                <div class="status-text">
+                    <div class="label">目標圖像 (target.mind)</div>
+                    <div class="detail" id="target-detail">檢查中...</div>
+                </div>
+            </div>
+            
+            <div class="status-item">
+                <div class="status-icon checking" id="model-icon">🎨</div>
+                <div class="status-text">
+                    <div class="label">3D 模型 (model.glb)</div>
+                    <div class="detail" id="model-detail">檢查中...</div>
                 </div>
             </div>
         </div>
+        
+        <!-- 按鈕 -->
+        <div id="button-area">
+            <button class="btn" id="start-btn" disabled>檢查中...</button>
+        </div>
+        <button class="btn btn-secondary" id="camera-test-btn">📷 測試相機</button>
+        
+        <!-- 說明 -->
+        <div class="help-section">
+            <h3>📁 需要的檔案</h3>
+            <p>1. <code>target.mind</code> - 目標圖像檔</p>
+            <p>2. <code>model.glb</code> - 3D 模型檔</p>
+            <p style="margin-top: 15px;">
+                <strong>製作 target.mind：</strong><br>
+                前往 <a href="https://hiukim.github.io/mind-ar-js-doc/tools/compile" target="_blank">MindAR 編譯器</a> 上傳圖片
+            </p>
+        </div>
     </div>
+    
+    <!-- AR 容器 -->
+    <div id="ar-container"></div>
+    
+    <!-- AR UI -->
+    <div id="ar-ui">
+        <button id="back-btn">←</button>
+        <div id="ar-status">尋找目標中...</div>
+        <div id="scan-hint">📱 請將相機對準目標圖像</div>
+        <div id="controls">
+            <button class="control-btn" id="scale-down">➖</button>
+            <button class="control-btn" id="scale-up">➕</button>
+            <button class="control-btn" id="rotate-btn">🔄</button>
+        </div>
+    </div>
+    
+    <!-- 相機測試用 -->
+    <video id="test-video" style="display:none;" playsinline autoplay muted></video>
 
     <script>
-        // 來自 microbit_v1_features.md 檔案的結構化資料
-        const features = {
-            front: [
-                { id: 1, name: "按鍵 (A & B)", desc: "兩個可獨立或組合使用的按鍵，用於輸入指令和控制程式。" },
-                { id: 2, name: "LED 螢幕 (5x5) 和光線感測器", desc: "由 25 個 LED 燈組成的 5x5 網格，用於顯示圖片、文字和數字。它同時也作為光線感測器，測量環境光的強弱。" },
-                { id: 3, name: "GPIO 引腳", desc: "通用輸入/輸出引腳，允許連接耳機、感應觸控，並添加其他電子產品。" },
-                { id: 4, name: "3 伏特電源引腳", desc: "可用於為外部 LED 和其他電子產品供電。" },
-                { id: 5, name: "接地引腳 (GND)", desc: "電路中的接地線，用於完成電路連接。" }
-            ],
-            back: [
-                { id: 1, name: "無線電及藍牙天線", desc: "允許 Micro:bit 透過無線電與其他 Micro:bit 通訊，或透過藍牙與其他裝置通訊。" },
-                { id: 2, name: "處理器和溫度感測器", desc: "Micro:bit 的「大腦」，負責執行您的指令。內含溫度感測器，可測量周遭環境的溫度。" },
-                { id: 3, name: "羅盤（Compass/磁力計）", desc: "用於尋找磁北或測量磁場強度，可應用於科學實驗或製作指南針。" },
-                { id: 4, name: "加速度感測器（Accelerometer）", desc: "測量三維度的作用力（包括重力），讓項目能夠感知方向、搖晃或移動。" },
-                { id: 5, name: "引腳（Pin）", desc: "連接外部配件、開關和電子產品，並為簡單的配件供電。" },
-                { id: 6, name: "Micro USB 孔", desc: "用於將程式從電腦下載到 Micro:bit，並為其供電。" },
-                { id: 7, name: "單個黃色 LED 燈", desc: "在程式下載時會閃爍，並在通過 USB 供電時保持亮起。" },
-                { id: 8, name: "重設按鍵", desc: "用於重新啟動 Micro:bit，並從頭開始重新運行程式。" },
-                { id: 9, name: "電池插孔", desc: "允許連接電池組（2 個 AAA 電池），使 Micro:bit 能夠在沒有 USB 連接的情況下運作。" },
-                { id: 10, name: "USB 介面晶片", desc: "用於向 Micro:bit 燒錄新程式碼，並透過 USB 發送和接收串列數據。" }
-            ]
+        // ===== 環境檢測 =====
+        const checks = {
+            https: false,
+            camera: false,
+            target: false,
+            model: false
         };
-
-        /**
-         * 建立單個功能項目的 HTML 元素
-         * @param {Object} feature - 功能物件
-         * @returns {string} HTML 字符串
-         */
-        function createFeatureItem(feature) {
-            // 使用唯一的 ID 方便 JavaScript 操作
-            const featureId = `feature-${feature.id}-${feature.name.replace(/[^a-zA-Z0-9]/g, '')}`;
+        
+        // 更新狀態圖示
+        function updateStatus(id, status, detail) {
+            const icon = document.getElementById(`${id}-icon`);
+            const detailEl = document.getElementById(`${id}-detail`);
             
-            return `
-                <div id="${featureId}" class="feature-item rounded-lg bg-gray-50 border border-gray-200" onclick="toggleDescription('${featureId}')">
-                    <!-- 可點擊的標題部分 -->
-                    <div class="flex items-center p-4">
-                        <span class="font-bold text-xl text-indigo-600 w-8 flex-shrink-0">
-                            ${feature.id}.
-                        </span>
-                        <span class="text-lg font-medium text-gray-700 flex-grow">
-                            ${feature.name}
-                        </span>
-                        <span class="text-gray-400 transform transition-transform duration-300 arrow-icon">
-                            <!-- SVG 圖示: 向下箭頭 -->
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
-                            </svg>
-                        </span>
-                    </div>
-
-                    <!-- 簡介內容部分 (預設隱藏) -->
-                    <div class="feature-description bg-indigo-50/50 text-gray-700 px-4">
-                        <p class="border-t border-indigo-200 pt-2">${feature.desc}</p>
-                    </div>
-                </div>
-            `;
-        }
-
-        /**
-         * 渲染功能清單到指定的容器
-         * @param {string} containerId - DOM 容器的 ID (e.g., 'front-features')
-         * @param {Array<Object>} featureList - 功能物件陣列
-         */
-        function renderFeatures(containerId, featureList) {
-            const container = document.getElementById(containerId);
-            if (container) {
-                container.innerHTML = featureList.map(createFeatureItem).join('');
+            icon.className = 'status-icon ' + status;
+            detailEl.textContent = detail;
+            
+            if (status === 'success') {
+                icon.textContent = '✓';
+            } else if (status === 'error') {
+                icon.textContent = '✗';
+            } else if (status === 'warning') {
+                icon.textContent = '⚠';
             }
         }
-
-        /**
-         * 點擊時切換簡介的顯示狀態
-         * @param {string} itemId - 功能項目的 ID
-         */
-        function toggleDescription(itemId) {
-            const itemElement = document.getElementById(itemId);
-            if (!itemElement) return;
-
-            // 取得簡介和箭頭圖示
-            const descElement = itemElement.querySelector('.feature-description');
-            const arrowIcon = itemElement.querySelector('.arrow-icon');
+        
+        // 檢查 HTTPS
+        function checkHTTPS() {
+            const isSecure = window.isSecureContext;
+            const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
             
-            // 檢查是否已經打開
-            const isOpen = descElement.classList.contains('open');
-
-            // 關閉所有其他打開的項目 (可選，但讓 UI 更整潔)
-            document.querySelectorAll('.feature-description.open').forEach(el => {
-                if (el !== descElement) {
-                    el.classList.remove('open');
-                    el.closest('.feature-item').querySelector('.arrow-icon').classList.remove('rotate-180');
-                }
-            });
-
-            // 執行切換
-            if (isOpen) {
-                descElement.classList.remove('open');
-                arrowIcon.classList.remove('rotate-180');
-                itemElement.classList.remove('shadow-lg'); // 關閉時移除陰影
+            if (isSecure) {
+                checks.https = true;
+                updateStatus('https', 'success', isLocalhost ? 'localhost 連線' : 'HTTPS 安全連線');
             } else {
-                descElement.classList.add('open');
-                arrowIcon.classList.add('rotate-180');
-                itemElement.classList.add('shadow-lg'); // 打開時增加陰影
+                updateStatus('https', 'error', '需要 HTTPS 或 localhost');
             }
         }
-
-        // 頁面載入完成後執行渲染
-        document.addEventListener('DOMContentLoaded', () => {
-            renderFeatures('front-features', features.front);
-            renderFeatures('back-features', features.back);
+        
+        // 檢查相機
+        async function checkCamera() {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                updateStatus('camera', 'error', '瀏覽器不支援');
+                return;
+            }
+            
+            try {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const cameras = devices.filter(d => d.kind === 'videoinput');
+                
+                if (cameras.length > 0) {
+                    checks.camera = true;
+                    updateStatus('camera', 'success', `找到 ${cameras.length} 個相機`);
+                } else {
+                    updateStatus('camera', 'warning', '未偵測到相機');
+                }
+            } catch (e) {
+                updateStatus('camera', 'warning', '需要授權後確認');
+                checks.camera = true; // 假設有相機
+            }
+        }
+        
+        // 檢查檔案是否存在
+        async function checkFile(url) {
+            try {
+                const response = await fetch(url, { method: 'HEAD' });
+                return response.ok;
+            } catch (e) {
+                return false;
+            }
+        }
+        
+        // 檢查 target.mind
+        async function checkTarget() {
+            const exists = await checkFile('./target.mind');
+            if (exists) {
+                checks.target = true;
+                updateStatus('target', 'success', '檔案已找到');
+            } else {
+                updateStatus('target', 'error', '檔案不存在！請上傳 target.mind');
+            }
+        }
+        
+        // 檢查 model.glb
+        async function checkModel() {
+            const exists = await checkFile('./model.glb');
+            if (exists) {
+                checks.model = true;
+                updateStatus('model', 'success', '檔案已找到');
+            } else {
+                updateStatus('model', 'error', '檔案不存在！請上傳 model.glb');
+            }
+        }
+        
+        // 更新按鈕狀態
+        function updateButton() {
+            const btn = document.getElementById('start-btn');
+            const allReady = checks.https && checks.camera && checks.target && checks.model;
+            
+            if (allReady) {
+                btn.disabled = false;
+                btn.textContent = '🚀 開始 AR 體驗';
+            } else {
+                btn.disabled = true;
+                if (!checks.https) {
+                    btn.textContent = '❌ 需要 HTTPS 連線';
+                } else if (!checks.target) {
+                    btn.textContent = '❌ 缺少 target.mind';
+                } else if (!checks.model) {
+                    btn.textContent = '❌ 缺少 model.glb';
+                } else {
+                    btn.textContent = '❌ 環境檢測失敗';
+                }
+            }
+        }
+        
+        // 執行所有檢查
+        async function runChecks() {
+            checkHTTPS();
+            await checkCamera();
+            await checkTarget();
+            await checkModel();
+            updateButton();
+        }
+        
+        // ===== 相機測試 =====
+        document.getElementById('camera-test-btn').addEventListener('click', async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'environment' }
+                });
+                
+                const video = document.getElementById('test-video');
+                video.srcObject = stream;
+                video.style.display = 'block';
+                video.style.position = 'fixed';
+                video.style.top = '0';
+                video.style.left = '0';
+                video.style.width = '100%';
+                video.style.height = '100%';
+                video.style.objectFit = 'cover';
+                video.style.zIndex = '9999';
+                
+                // 點擊關閉
+                video.onclick = () => {
+                    stream.getTracks().forEach(t => t.stop());
+                    video.style.display = 'none';
+                    video.srcObject = null;
+                    
+                    // 重新檢查
+                    checks.camera = true;
+                    updateStatus('camera', 'success', '相機正常運作');
+                    updateButton();
+                };
+                
+                alert('相機正常！點擊畫面關閉');
+                
+            } catch (e) {
+                alert('相機錯誤: ' + e.message + '\n\n請確保:\n1. 使用 HTTPS 或 localhost\n2. 已允許相機權限');
+            }
         });
-
+        
+        // ===== AR 功能 =====
+        let arStarted = false;
+        
+        document.getElementById('start-btn').addEventListener('click', startAR);
+        
+        async function startAR() {
+            if (arStarted) return;
+            
+            const btn = document.getElementById('start-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loader" style="width:20px;height:20px;display:inline-block;vertical-align:middle;margin-right:10px;"></span>載入中...';
+            
+            try {
+                // 動態載入 A-Frame 和 MindAR
+                await loadScript('https://aframe.io/releases/1.4.0/aframe.min.js');
+                await loadScript('https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js');
+                
+                // 創建 AR 場景
+                createARScene();
+                
+            } catch (e) {
+                console.error('AR 載入失敗:', e);
+                alert('AR 載入失敗: ' + e.message);
+                btn.disabled = false;
+                btn.textContent = '🚀 開始 AR 體驗';
+            }
+        }
+        
+        function loadScript(src) {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = src;
+                script.onload = resolve;
+                script.onerror = () => reject(new Error('無法載入: ' + src));
+                document.head.appendChild(script);
+            });
+        }
+        
+        function createARScene() {
+            const container = document.getElementById('ar-container');
+            
+            container.innerHTML = `
+                <a-scene
+                    id="ar-scene"
+                    mindar-image="imageTargetSrc: ./target.mind; autoStart: true; uiLoading: no; uiScanning: no; uiError: no;"
+                    color-space="sRGB"
+                    renderer="colorManagement: true"
+                    vr-mode-ui="enabled: false"
+                    device-orientation-permission-ui="enabled: false"
+                    embedded
+                    style="position: fixed; top: 0; left: 0; width: 100%; height: 100%;"
+                >
+                    <a-assets>
+                        <a-asset-item id="model" src="./model.glb"></a-asset-item>
+                    </a-assets>
+                    
+                    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+                    
+                    <a-entity id="target" mindar-image-target="targetIndex: 0">
+                        <a-gltf-model
+                            id="ar-model"
+                            src="#model"
+                            position="0 0 0"
+                            rotation="0 0 0"
+                            scale="0.5 0.5 0.5"
+                            animation="property: rotation; to: 0 360 0; loop: true; dur: 10000; easing: linear"
+                        ></a-gltf-model>
+                        
+                        <a-ring
+                            color="#00d4ff"
+                            radius-inner="0.3"
+                            radius-outer="0.35"
+                            position="0 0 0"
+                            rotation="-90 0 0"
+                            opacity="0.5"
+                            animation="property: scale; to: 1.2 1.2 1.2; loop: true; dir: alternate; dur: 1000"
+                        ></a-ring>
+                    </a-entity>
+                    
+                    <a-light type="ambient" color="#ffffff" intensity="0.8"></a-light>
+                    <a-light type="directional" color="#ffffff" intensity="1" position="0 2 1"></a-light>
+                </a-scene>
+            `;
+            
+            container.classList.add('active');
+            document.getElementById('main-screen').classList.add('hidden');
+            document.getElementById('ar-ui').style.display = 'block';
+            
+            // 等待場景載入
+            const scene = document.getElementById('ar-scene');
+            
+            scene.addEventListener('loaded', () => {
+                console.log('A-Frame 場景已載入');
+                arStarted = true;
+            });
+            
+            // 監聽目標檢測
+            setTimeout(() => {
+                const target = document.getElementById('target');
+                if (target) {
+                    target.addEventListener('targetFound', () => {
+                        document.getElementById('ar-status').textContent = '✓ 已找到目標！';
+                        document.getElementById('ar-status').classList.add('found');
+                        document.getElementById('scan-hint').style.display = 'none';
+                    });
+                    
+                    target.addEventListener('targetLost', () => {
+                        document.getElementById('ar-status').textContent = '尋找目標中...';
+                        document.getElementById('ar-status').classList.remove('found');
+                        document.getElementById('scan-hint').style.display = 'block';
+                    });
+                }
+            }, 1000);
+        }
+        
+        // 返回按鈕
+        document.getElementById('back-btn').addEventListener('click', () => {
+            location.reload();
+        });
+        
+        // 縮放控制
+        let currentScale = 0.5;
+        
+        document.getElementById('scale-up').addEventListener('click', () => {
+            currentScale = Math.min(currentScale + 0.1, 2);
+            const model = document.getElementById('ar-model');
+            if (model) model.setAttribute('scale', `${currentScale} ${currentScale} ${currentScale}`);
+        });
+        
+        document.getElementById('scale-down').addEventListener('click', () => {
+            currentScale = Math.max(currentScale - 0.1, 0.1);
+            const model = document.getElementById('ar-model');
+            if (model) model.setAttribute('scale', `${currentScale} ${currentScale} ${currentScale}`);
+        });
+        
+        // 旋轉控制
+        let isRotating = true;
+        document.getElementById('rotate-btn').addEventListener('click', () => {
+            isRotating = !isRotating;
+            const model = document.getElementById('ar-model');
+            if (model) {
+                if (isRotating) {
+                    model.setAttribute('animation', 'property: rotation; to: 0 360 0; loop: true; dur: 10000; easing: linear');
+                } else {
+                    model.removeAttribute('animation');
+                }
+            }
+        });
+        
+        // 頁面載入時執行檢查
+        window.addEventListener('DOMContentLoaded', runChecks);
     </script>
-
 </body>
 </html>
