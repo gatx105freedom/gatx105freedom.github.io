@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chart.js 移動平均演示 (N=4)</title>
+    <title>Chart.js 移動平均演示 (N=3)</title>
     <!-- 載入 Tailwind CSS CDN for modern styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- 載入 Chart.js CDN -->
@@ -78,7 +78,7 @@
 </head>
 <body class="p-4 md:p-8">
 
-    <h1>數據可視化：移動平均動畫演示 (N=4)</h1>
+    <h1>數據可視化：移動平均動畫演示 (N=3)</h1>
 
     <div class="flex flex-wrap gap-4 mb-4 items-center">
         <div class="legend">
@@ -102,13 +102,13 @@
 
     <!-- 計算說明區 -->
     <div id="explanationBox" class="info-box p-4 bg-yellow-100 border-l-4 border-yellow-500">
-        <h3 class="text-lg font-semibold text-yellow-800" id="windowDetails">N=4 窗口</h3>
+        <h3 class="text-lg font-semibold text-yellow-800" id="windowDetails">N=3 窗口</h3>
         <p id="calculationDetails" class="mt-2 text-yellow-700">點擊「開始演示」觀看移動平均的計算過程和數據平滑效果。</p>
     </div>
 
     <!-- 數據表格容器 (已修改為水平呈現) -->
     <div id="dataTableContainer" class="mt-8 mx-auto max-w-4xl">
-        <h3 class="text-xl font-semibold mb-3 text-gray-700">同步數據明細表 (N=4) - 水平呈現</h3>
+        <h3 class="text-xl font-semibold mb-3 text-gray-700">同步數據明細表 (N=3) - 水平呈現</h3>
         <!-- 使用 overflow-x-auto 實現水平滾動 -->
         <div id="tableWrapper" class="max-h-96 overflow-y-hidden overflow-x-auto rounded-lg border border-gray-300 shadow-md">
             <!-- 增加 whitespace-nowrap 確保表格不會換行 -->
@@ -260,7 +260,7 @@
                             spanGaps: true,
                         },
                         {
-                            label: '移動平均 (N=4)',
+                            label: '移動平均 (N=3)',
                             data: MA_DATA,
                             borderColor: 'rgba(0, 123, 255, 1)',
                             backgroundColor: 'rgba(0, 123, 255, 0.1)',
