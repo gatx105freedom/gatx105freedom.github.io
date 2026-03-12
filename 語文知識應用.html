@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>語文知識填空挑戰</title>
+    <style>
+        :root {
+            --paper-bg: #fdfaf4;
+            --ink-black: #2c3e50;
+            --seal-red: #c0392b;
+            --bamboo-light: #eaddc5;
+            --bamboo-dark: #8b5a2b;
+            --correct-green: #2e7d32;
+        }
+
+        body {
+            font-family: 'KaiTi', '楷体', 'PMingLiU', 'MingLiU', serif;
+            background-color: #d7ccc8;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            color: var(--ink-black);
+            overflow-x: hidden;
+        }
+
+        /* SVG Background Layers */
+        .bg-svg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -1;
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            background-color: var(--paper-bg);
+            min-height: 100vh;
+            box-shadow: 0 0 30px rgba(0,0,0,0.15);
+            position: relative;
+            padding-bottom: 180px; /* Space for word bank */
+            box-sizing: border-box;
+        }
+
+        .header {
+            text-align: center;
+            padding: 40px 20px 10px;
+            position: relative;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin: 0 0 10px 0;
+            color: var(--ink-black);
+            letter-spacing: 5px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+        }
+
+        .progress-text {
+            color: var(--bamboo-dark);
+            font-size: 1.1em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .content {
+            padding: 10px 40px;
+            font-size: 1.2em;
+            line-height: 2.2;
+        }
+
+        /* 獨立題塊樣式 */
+        .question-block {
+            display: none; /* 預設隱藏，由JS控制顯示 */
+            position: relative;
+            background: #fffcf7;
+            border: 1px solid var(--bamboo-light);
+            border-radius: 8px;
+            padding: 25px 30px 15px 30px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+            text-align: justify;
+            transition: box-shadow 0.3s;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .question-block.active-q {
+            display: block;
+        }
+
+        .question-block:hover {
+            box-shadow: 0 6px 15px rgba(139, 90, 43, 0.1);
+            border-color: #d0c0a0;
+        }
+
+        .q-actions {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px dashed var(--bamboo-light);
+            text-align: right;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Interactive Blanks */
+        .blank {
+            border: none;
+            border-bottom: 2px solid var(--ink-black);
+            background: rgba(255, 255, 255, 0.5);
+            text-align: center;
+            font-family: inherit;
+            font-size: 1em;
+            color: var(--seal-red);
+            font-weight: bold;
+            width: 4em;
+            min-width: 3em;
+            margin: 0 5px;
+            padding: 2px;
+            outline: none;
+            transition: all 0.3s;
+            cursor: pointer;
+            border-radius: 4px 4px 0 0;
+        }
+
+        .blank:focus, .blank.active {
+            border-bottom-color: var(--seal-red);
+            background: rgba(192, 57, 43, 0.1);
+            box-shadow: 0 2px 0 var(--seal-red);
+        }
+
+        .blank.correct {
+            border-bottom-color: var(--correct-green);
+            color: var(--correct-green);
+            background: rgba(46, 125, 50, 0.05);
+        }
+
+        .blank.incorrect {
+            border-bottom-color: var(--seal-red);
+            background: rgba(192, 57, 43, 0.1);
+            animation: shake 0.4s;
+        }
+
+        .blank.drag-over {
+            border-bottom-color: var(--correct-green);
+            background: rgba(46, 125, 50, 0.2);
+            transform: scale(1.1);
+        }
+
+        /* Bottom Word Bank */
+        .word-bank-container {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 900px;
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23eaddc5'/%3E%3Cpath d='M0 20 L100 20 M0 40 L100 40 M0 60 L100 60 M0 80 L100 80' stroke='%23d0c0a0' stroke-width='1'/%3E%3C/svg%3E");
+            border-top: 4px solid var(--bamboo-dark);
+            padding: 15px 20px;
+            box-sizing: border-box;
+            box-shadow: 0 -5px 15px rgba(0,0,0,0.2);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .word-bank-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
+            color: var(--bamboo-dark);
+        }
+
+        .tiles-area {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            max-height: 120px;
+            min-height: 50px;
+            overflow-y: auto;
+            justify-content: center;
+        }
+
+        .tile {
+            background: #fffdf5;
+            color: var(--ink-black);
+            border: 1px solid var(--bamboo-dark);
+            border-radius: 4px;
+            padding: 5px 12px;
+            font-size: 1.1em;
+            cursor: pointer;
+            user-select: none;
+            box-shadow: 1px 1px 3px rgba(0,0,0,0.1);
+            transition: transform 0.1s, background 0.2s, opacity 0.3s;
+            font-family: inherit;
+        }
+
+        .tile:hover {
+            background: #fdf5e6;
+            transform: translateY(-2px);
+        }
+
+        .tile:active {
+            transform: translateY(0);
+            background: #ffe4b5;
+        }
+
+        .tile.dragging {
+            opacity: 0.5;
+            transform: scale(1.1);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            background: var(--bamboo-dark);
+            color: #fff;
+            border: none;
+            padding: 6px 15px;
+            font-size: 1em;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: opacity 0.2s, background 0.2s;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+        }
+
+        .btn.outline {
+            background: transparent;
+            color: var(--bamboo-dark);
+            border: 1px solid var(--bamboo-dark);
+        }
+
+        .btn.outline:hover {
+            background: rgba(139, 90, 43, 0.1);
+        }
+
+        .btn.small {
+            padding: 5px 12px;
+            font-size: 0.95em;
+        }
+        
+        .btn.next-btn {
+            background: var(--correct-green);
+            font-weight: bold;
+            display: none; /* 預設隱藏，滿分後顯示 */
+            animation: pop 0.4s ease-out;
+        }
+
+        .btn.next-btn:hover {
+            background: #1b5e20;
+        }
+
+        /* Results Seal (Mini version per question) */
+        .mini-seal {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: 75px;
+            height: 75px;
+            opacity: 0;
+            transform: scale(2) rotate(20deg);
+            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            pointer-events: none;
+        }
+
+        .mini-seal.show {
+            opacity: 0.8;
+            transform: scale(1) rotate(-5deg);
+        }
+
+        .completion-msg {
+            color: var(--correct-green);
+            font-weight: bold;
+            display: none;
+            font-size: 1.1em;
+            animation: fadeIn 0.5s;
+        }
+
+        /* Animations */
+        @keyframes pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .pop {
+            animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-4px); }
+            50% { transform: translateX(4px); }
+            75% { transform: translateX(-4px); }
+            100% { transform: translateX(0); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @media (max-width: 600px) {
+            .content { padding: 10px 15px; font-size: 1.1em; }
+            .header h1 { font-size: 2em; }
+            .question-block { padding: 20px 15px 15px; }
+            .mini-seal { right: 5px; top: 5px; width: 60px; height: 60px; }
+            .word-bank-container { padding: 10px; }
+            .tiles-area { max-height: 100px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- SVG Background -->
+    <svg class="bg-svg" viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <linearGradient id="sunGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#e74c3c" stop-opacity="0.2"/>
+                <stop offset="100%" stop-color="#fdfaf4" stop-opacity="0"/>
+            </linearGradient>
+        </defs>
+        <circle cx="850" cy="200" r="100" fill="url(#sunGrad)" />
+        <path d="M0,600 Q150,500 300,550 T600,450 T1000,500 L1000,1000 L0,1000 Z" fill="#e0d5c1" opacity="0.4"/>
+        <path d="M-100,700 Q100,600 250,680 T550,600 T1100,650 L1100,1000 L-100,1000 Z" fill="#d7ccc8" opacity="0.6"/>
+        <g stroke="#8b5a2b" stroke-width="2" fill="none" opacity="0.3">
+            <path d="M50,0 Q60,100 40,200 Q30,300 50,400" />
+            <path d="M55,50 Q80,40 100,60" fill="#6b8e23" opacity="0.5"/>
+            <path d="M45,150 Q20,130 10,160" fill="#6b8e23" opacity="0.5"/>
+            <path d="M35,250 Q60,260 80,240" fill="#6b8e23" opacity="0.5"/>
+        </g>
+    </svg>
+
+    <!-- 印章模板 (Template for seals) -->
+    <svg id="seal-template" style="display:none;" xmlns="http://www.w3.org/2000/svg">
+        <g>
+            <rect x="5" y="5" width="90" height="90" rx="10" fill="none" stroke="#c0392b" stroke-width="4"/>
+            <rect x="10" y="10" width="80" height="80" rx="5" fill="none" stroke="#c0392b" stroke-width="2"/>
+            <text x="50" y="45" font-family="'KaiTi', serif" font-size="30" fill="#c0392b" text-anchor="middle" font-weight="bold">優</text>
+            <text x="50" y="80" font-family="'KaiTi', serif" font-size="30" fill="#c0392b" text-anchor="middle" font-weight="bold">秀</text>
+        </g>
+    </svg>
+
+    <div class="container">
+        <div class="header">
+            <h1>語文知識填空挑戰</h1>
+            <div class="progress-text" id="progress-indicator">當前進度：1 / 6</div>
+            <p style="color: #666; font-size: 0.9em; margin-top: 5px;">✨ 闖關模式：將下方專屬詞彙拖曳或點選至空格中，滿分即可進入下一關。</p>
+        </div>
+
+        <div class="content">
+            
+            <!-- 題目 1 -->
+            <div class="question-block active-q" id="qb-1">
+                <svg class="mini-seal" viewBox="0 0 100 100"><use href="#seal-template"></use></svg>
+                1. 《山雨》的作者是 <input type="text" class="blank" data-ans="趙麗宏,赵丽宏"> 。本文的體裁是 <input type="text" class="blank" data-ans="描寫,描写"> 文。<br>
+                作者通過描寫山雨的 <input type="text" class="blank" data-ans="聲音,声音"> ，<input type="text" class="blank" data-ans="雨中"> 山林的美景以及 <input type="text" class="blank" data-ans="雨後,雨后"> 山林的景象，表達了對 <input type="text" class="blank" data-ans="山雨"> 和 <input type="text" class="blank" data-ans="大自然,自然"> 的 <input type="text" class="blank" data-ans="喜愛,喜爱"> 之情。
+                <div class="q-actions">
+                    <span class="completion-msg">🎉 恭喜完成！</span>
+                    <button class="btn small check-btn" onclick="checkQuestion(1)">批改本題</button>
+                    <button class="btn small next-btn" onclick="nextQuestion()">下一題 ➔</button>
+                </div>
+            </div>
+
+            <!-- 題目 2 -->
+            <div class="question-block" id="qb-2">
+                <svg class="mini-seal" viewBox="0 0 100 100"><use href="#seal-template"></use></svg>
+                2. 《下雨的時候》的作者是 <input type="text" class="blank" data-ans="林芳萍"> 。本文的體裁是 <input type="text" class="blank" data-ans="描寫,描写"> 文。本文描寫“我”在下雨時和雨後 <input type="text" class="blank" data-ans="觀察,观察"> 到的景象、<input type="text" class="blank" data-ans="聽到,听到"> 的雨聲，以及由此產生的種種 <input type="text" class="blank" data-ans="聯想,联想"> 。
+                <div class="q-actions">
+                    <span class="completion-msg">🎉 恭喜完成！</span>
+                    <button class="btn small check-btn" onclick="checkQuestion(2)">批改本題</button>
+                    <button class="btn small next-btn" onclick="nextQuestion()">下一題 ➔</button>
+                </div>
+            </div>
+
+            <!-- 題目 3 -->
+            <div class="question-block" id="qb-3">
+                <svg class="mini-seal" viewBox="0 0 100 100"><use href="#seal-template"></use></svg>
+                3. 《火燒雲》的體裁是 <input type="text" class="blank" data-ans="描寫,描写"> 文。作者是 <input type="text" class="blank" data-ans="蕭紅,萧红"> 。她是中國 <input type="text" class="blank" data-ans="現代,现代"> 女作家，原名 <input type="text" class="blank" data-ans="張迺瑩,张乃莹"> ，筆名 <input type="text" class="blank" data-ans="蕭紅,萧红"> 、<input type="text" class="blank" data-ans="悄吟"> 。代表作品有《 <input type="text" class="blank" data-ans="生死場,生死场"> 》、《 <input type="text" class="blank" data-ans="呼蘭河傳,呼兰河传"> 》。<br>
+                本文通過描寫 <input type="text" class="blank" data-ans="黃昏,黄昏"> 時火燒雲 <input type="text" class="blank" data-ans="變化多端,变化多端"> 的色彩和 <input type="text" class="blank" data-ans="快速變幻,快速变幻"> 的各種形狀，表達了作者對神奇的 <input type="text" class="blank" data-ans="大自然,自然"> 的 <input type="text" class="blank" data-ans="喜愛,喜爱"> 和 <input type="text" class="blank" data-ans="讚歎,赞叹"> 。
+                <div class="q-actions">
+                    <span class="completion-msg">🎉 恭喜完成！</span>
+                    <button class="btn small check-btn" onclick="checkQuestion(3)">批改本題</button>
+                    <button class="btn small next-btn" onclick="nextQuestion()">下一題 ➔</button>
+                </div>
+            </div>
+
+            <!-- 題目 4 -->
+            <div class="question-block" id="qb-4">
+                <svg class="mini-seal" viewBox="0 0 100 100"><use href="#seal-template"></use></svg>
+                4. 《勤奮與成功》的文體是 <input type="text" class="blank" data-ans="議論文,议论文,議論,议论"> 。本文通過 <input type="text" class="blank" data-ans="古今中外"> 名人的 <input type="text" class="blank" data-ans="正面"> 和 <input type="text" class="blank" data-ans="反面"> 例子，論證 <input type="text" class="blank" data-ans="勤奮,勤奋"> 對個人 <input type="text" class="blank" data-ans="成就"> 起決定作用。
+                <div class="q-actions">
+                    <span class="completion-msg">🎉 恭喜完成！</span>
+                    <button class="btn small check-btn" onclick="checkQuestion(4)">批改本題</button>
+                    <button class="btn small next-btn" onclick="nextQuestion()">下一題 ➔</button>
+                </div>
+            </div>
+
+            <!-- 題目 5 -->
+            <div class="question-block" id="qb-5">
+                <svg class="mini-seal" viewBox="0 0 100 100"><use href="#seal-template"></use></svg>
+                5. 《要有接受批評的胸襟》的文體是 <input type="text" class="blank" data-ans="議論文,议论文,議論,议论"> 。本文通過運用 <input type="text" class="blank" data-ans="理論,理论"> 、引用 <input type="text" class="blank" data-ans="諺語,谚语"> 和 <input type="text" class="blank" data-ans="歷史,历史"> 事例作 <input type="text" class="blank" data-ans="論據,论据"> ，論證我們只有接受別人的 <input type="text" class="blank" data-ans="批評,批评"> ，才能把事情辦得更好。
+                <div class="q-actions">
+                    <span class="completion-msg">🎉 恭喜完成！</span>
+                    <button class="btn small check-btn" onclick="checkQuestion(5)">批改本題</button>
+                    <button class="btn small next-btn" onclick="nextQuestion()">下一題 ➔</button>
+                </div>
+            </div>
+
+            <!-- 題目 6 -->
+            <div class="question-block" id="qb-6">
+                <svg class="mini-seal" viewBox="0 0 100 100"><use href="#seal-template"></use></svg>
+                6. 議論文三要素——<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;<input type="text" class="blank" data-ans="論點,论点"> ：作者所持的 <input type="text" class="blank" data-ans="觀點,观点"> 和 <input type="text" class="blank" data-ans="看法"> 。<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;<input type="text" class="blank" data-ans="論據,论据"> ：用來證明 <input type="text" class="blank" data-ans="論點,论点"> 的 <input type="text" class="blank" data-ans="材料"> 。<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;<input type="text" class="blank" data-ans="論證,论证"> ：運用 <input type="text" class="blank" data-ans="論據,论据"> 來證明 <input type="text" class="blank" data-ans="論點,论点"> 的 <input type="text" class="blank" data-ans="方法"> 。<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;(如： <input type="text" class="blank" data-ans="舉例,举例"> 論證、<input type="text" class="blank" data-ans="引用"> 論證、<input type="text" class="blank" data-ans="對比,对比"> 論證、<input type="text" class="blank" data-ans="比喻"> 論證等。)
+                <div class="q-actions">
+                    <span class="completion-msg">🎉 恭喜完成所有關卡！</span>
+                    <button class="btn small check-btn" onclick="checkQuestion(6)">批改本題</button>
+                    <!-- 最後一題沒有下一題，但可以用重置代替或隱藏 -->
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Sticky Word Bank at the bottom -->
+    <div class="word-bank-container">
+        <div class="word-bank-header">
+            <span>📚 第 <span id="wb-q-num">1</span> 題詞彙庫 <span style="font-weight:normal; font-size:0.9em; color:#666;">(已填入空格的詞彙會自動隱藏)</span></span>
+            <div class="controls">
+                <button class="btn outline small" onclick="revealAnswers()">顯示本題解答</button>
+            </div>
+        </div>
+        <div class="tiles-area" id="word-tiles">
+            <!-- Tiles injected dynamically per question -->
+        </div>
+    </div>
+
+    <script>
+        let currentQ = 1;
+        const totalQ = 6;
+        let activeInput = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // 初始化全域空格的基礎事件 (Drag & Drop, Focus, etc)
+            const allInputs = document.querySelectorAll('.blank');
+            allInputs.forEach(input => {
+                input.addEventListener('input', function() {
+                    adjustWidth(this);
+                    this.classList.remove('correct', 'incorrect');
+                    syncWordBank(); // 打字時同步隱藏詞彙
+                });
+                
+                input.addEventListener('click', function() {
+                    document.querySelectorAll('.blank').forEach(i => i.classList.remove('active'));
+                    this.classList.add('active');
+                    activeInput = this;
+                });
+
+                input.addEventListener('dragover', e => {
+                    e.preventDefault(); 
+                    input.classList.add('drag-over');
+                });
+
+                input.addEventListener('dragleave', e => {
+                    input.classList.remove('drag-over');
+                });
+
+                input.addEventListener('drop', e => {
+                    e.preventDefault();
+                    input.classList.remove('drag-over');
+                    const word = e.dataTransfer.getData('text/plain');
+                    if(word) {
+                        document.querySelectorAll('.blank').forEach(i => i.classList.remove('active'));
+                        input.classList.add('active');
+                        activeInput = input;
+                        insertWord(word, true); 
+                    }
+                });
+            });
+
+            // 初始化第一關
+            loadQuestion(currentQ);
+        });
+
+        // 讀取/切換指定關卡
+        function loadQuestion(qIndex) {
+            // 更新進度顯示
+            document.getElementById('progress-indicator').innerText = `當前進度：${qIndex} / ${totalQ}`;
+            document.getElementById('wb-q-num').innerText = qIndex;
+
+            // 隱藏所有題目，只顯示當前題目
+            document.querySelectorAll('.question-block').forEach(qb => {
+                qb.classList.remove('active-q');
+            });
+            const currentBlock = document.getElementById('qb-' + qIndex);
+            currentBlock.classList.add('active-q');
+
+            // 初始化這題的第一個空格
+            const currentInputs = currentBlock.querySelectorAll('.blank');
+            if(currentInputs.length > 0) {
+                currentInputs.forEach(i => i.classList.remove('active'));
+                currentInputs[0].classList.add('active');
+                activeInput = currentInputs[0];
+            }
+
+            // 動態生成此題專屬的詞彙庫
+            generateWordBank(qIndex);
+        }
+
+        // 產生專屬詞彙庫
+        function generateWordBank(qIndex) {
+            const currentInputs = document.querySelectorAll('#qb-' + qIndex + ' .blank');
+            const tilesArea = document.getElementById('word-tiles');
+            tilesArea.innerHTML = ''; // 清空舊詞彙
+
+            let exactWordPool = [];
+            currentInputs.forEach(input => {
+                exactWordPool.push(input.dataset.ans.split(',')[0].trim());
+            });
+
+            // 打亂順序
+            const shuffledWords = exactWordPool.sort(() => Math.random() - 0.5);
+
+            shuffledWords.forEach(word => {
+                const btn = document.createElement('button');
+                btn.className = 'tile';
+                btn.innerText = word;
+                btn.draggable = true; 
+                
+                btn.onclick = () => insertWord(word);
+
+                btn.addEventListener('dragstart', e => {
+                    btn.classList.add('dragging');
+                    e.dataTransfer.setData('text/plain', word);
+                    e.dataTransfer.effectAllowed = 'copy';
+                });
+
+                btn.addEventListener('dragend', e => {
+                    btn.classList.remove('dragging');
+                });
+
+                tilesArea.appendChild(btn);
+            });
+
+            syncWordBank(); // 同步一次，以防有先填過的
+        }
+
+        // 進入下一關
+        function nextQuestion() {
+            if (currentQ < totalQ) {
+                currentQ++;
+                loadQuestion(currentQ);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }
+
+        // 動態同步當前題目的詞彙庫顯示/隱藏
+        function syncWordBank() {
+            const currentInputs = document.querySelectorAll('#qb-' + currentQ + ' .blank');
+            const usedWords = Array.from(currentInputs)
+                                   .map(b => b.value.trim())
+                                   .filter(v => v !== "");
+            
+            const tiles = document.querySelectorAll('.tile');
+            tiles.forEach(t => t.style.display = 'inline-block'); // 先全開
+
+            tiles.forEach(t => {
+                if (t.style.display !== 'none') {
+                    const wordIndex = usedWords.indexOf(t.innerText);
+                    if (wordIndex !== -1) {
+                        t.style.display = 'none'; 
+                        usedWords.splice(wordIndex, 1); 
+                    }
+                }
+            });
+        }
+
+        function adjustWidth(el) {
+            const textLen = el.value.length;
+            const newWidth = textLen > 2 ? (textLen * 1.3) + 'em' : '4em';
+            el.style.width = newWidth;
+        }
+
+        function insertWord(word, isDrop = false) {
+            const currentInputs = Array.from(document.querySelectorAll('#qb-' + currentQ + ' .blank'));
+
+            // 確保有 activeInput，如果沒有或已經有字了，自動找這題的第一個空位
+            if (!activeInput || !currentInputs.includes(activeInput) || activeInput.value !== "") {
+                const firstEmpty = currentInputs.find(i => !i.value);
+                if (firstEmpty) {
+                    document.querySelectorAll('.blank').forEach(i => i.classList.remove('active'));
+                    firstEmpty.classList.add('active');
+                    activeInput = firstEmpty;
+                }
+            }
+
+            if (activeInput && currentInputs.includes(activeInput)) {
+                activeInput.value = word;
+                adjustWidth(activeInput);
+                activeInput.classList.remove('correct', 'incorrect');
+                syncWordBank(); 
+                
+                activeInput.classList.add('pop');
+                const currentObj = activeInput; 
+                setTimeout(() => currentObj.classList.remove('pop'), 300);
+                
+                if (!isDrop) {
+                    activeInput.classList.remove('active');
+                    const nextEmpty = currentInputs.find(i => !i.value);
+                    if (nextEmpty) {
+                        nextEmpty.classList.add('active');
+                        activeInput = nextEmpty;
+                    } else {
+                        activeInput = null; 
+                    }
+                }
+            } else {
+                alert("本題所有空格都已填滿！請點擊下方的「批改本題」。");
+            }
+        }
+
+        function throwConfetti() {
+            const colors = ['#c0392b', '#e74c3c', '#f1c40f', '#27ae60', '#2980b9', '#8e44ad'];
+            for(let i = 0; i < 100; i++) {
+                const confetti = document.createElement('div');
+                confetti.style.position = 'fixed';
+                confetti.style.left = Math.random() * 100 + 'vw';
+                confetti.style.top = '-10px';
+                confetti.style.width = (Math.random() * 12 + 5) + 'px';
+                confetti.style.height = (Math.random() * 12 + 5) + 'px';
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+                confetti.style.zIndex = '9999';
+                confetti.style.pointerEvents = 'none';
+                document.body.appendChild(confetti);
+
+                const duration = Math.random() * 2 + 1.5;
+                confetti.animate([
+                    { transform: `translate3d(0,0,0) rotate(0deg)`, opacity: 1 },
+                    { transform: `translate3d(${Math.random()*200 - 100}px, 100vh, 0) rotate(${Math.random()*720}deg)`, opacity: 0 }
+                ], {
+                    duration: duration * 1000,
+                    easing: 'cubic-bezier(.37,0,.63,1)',
+                    fill: 'forwards'
+                });
+
+                setTimeout(() => confetti.remove(), duration * 1000);
+            }
+        }
+
+        // 批改當前題目
+        function checkQuestion(qIndex) {
+            const qBlock = document.getElementById('qb-' + qIndex);
+            const inputs = qBlock.querySelectorAll('.blank');
+            let score = 0;
+            let total = inputs.length;
+
+            inputs.forEach(input => {
+                const acceptedAnswers = input.dataset.ans.split(',').map(a => a.trim());
+                let userVal = input.value.trim().replace(/文$/, ''); 
+                let userValRaw = input.value.trim();
+
+                if (userValRaw !== "" && (acceptedAnswers.includes(userValRaw) || acceptedAnswers.includes(userVal))) {
+                    input.classList.add('correct');
+                    input.classList.remove('incorrect');
+                    score++;
+                } else {
+                    input.classList.add('incorrect');
+                    input.classList.remove('correct');
+                }
+                input.classList.remove('active');
+            });
+
+            const seal = qBlock.querySelector('.mini-seal');
+            const checkBtn = qBlock.querySelector('.check-btn');
+            const nextBtn = qBlock.querySelector('.next-btn');
+            const msg = qBlock.querySelector('.completion-msg');
+            
+            // 全對：顯示過關特效、隱藏批改鈕、顯示下一題
+            if (score === total) {
+                seal.classList.add('show');
+                throwConfetti();
+                
+                checkBtn.style.display = 'none';
+                msg.style.display = 'inline-block';
+
+                if (qIndex < totalQ) {
+                    nextBtn.style.display = 'inline-block';
+                }
+            } else {
+                seal.classList.remove('show');
+                setTimeout(() => {
+                    alert(`第 ${qIndex} 題：答對 ${score} / ${total} 格。\n紅色為錯誤或未填部分，請從下方詞彙庫選擇正確答案繼續修改！`);
+                }, 100);
+            }
+        }
+
+        // 顯示當前題目的解答
+        function revealAnswers() {
+            if(confirm("確定要顯示本題的所有正確答案嗎？")) {
+                const currentInputs = document.querySelectorAll('#qb-' + currentQ + ' .blank');
+                currentInputs.forEach(input => {
+                    const firstAns = input.dataset.ans.split(',')[0];
+                    input.value = firstAns;
+                    adjustWidth(input);
+                    input.classList.remove('incorrect');
+                    input.classList.add('correct');
+                    input.classList.remove('active');
+                });
+                syncWordBank(); // 同步隱藏全部詞彙
+            }
+        }
+    </script>
+</body>
+</html>
