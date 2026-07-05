@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分數升降對比工具 (含等級功能)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #f8fafc;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        .jump-alert {
+            background-color: #fffbeb !important; /* 淺黃色背景 */
+            border-left: 4px solid #f59e0b;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="max-w-7xl mx-auto">
+        <!-- 標題區域 -->
+        <div class="mb-8 text-center">
+            <h1 class="text-3xl font-bold text-slate-800 mb-2">📈 分數等級對比分析</h1>
+            <p class="text-slate-500">輸入分數，自動轉換等級並分析 $\ge 2$ 級的重大變動</p>
+        </div>
+
+        <!-- 輸入區域 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div class="flex flex-col space-y-2">
+                <label class="font-semibold text-slate-700 flex justify-between">
+                    <span>原始分數 (A)</span>
+                    <span id="leftCount" class="text-xs font-normal text-slate-400">0 筆</span>
+                </label>
+                <textarea 
+                    id="leftInput" 
+                    placeholder="每行一個分數...&#10;92&#10;65&#10;78" 
+                    class="w-full h-48 p-4 border border-slate-200 rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all custom-scrollbar"
+                ></textarea>
+            </div>
+            <div class="flex flex-col space-y-2">
+                <label class="font-semibold text-slate-700 flex justify-between">
+                    <span>最新分數 (B)</span>
+                    <span id="rightCount" class="text-xs font-normal text-slate-400">0 筆</span>
+                </label>
+                <textarea 
+                    id="rightInput" 
+                    placeholder="每行一個分數...&#10;85&#10;80&#10;78" 
+                    class="w-full h-48 p-4 border border-slate-200 rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all custom-scrollbar"
+                ></textarea>
+            </div>
+        </div>
+
+        <!-- 控制按鈕 -->
+        <div class="flex flex-wrap gap-4 justify-center mb-10">
+            <button 
+                onclick="compareScores()" 
+                class="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5 active:translate-y-0"
+            >
+                🚀 開始等級對比
+            </button>
+            <button 
+                onclick="clearAll()" 
+                class="px-8 py-3 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 font-semibold rounded-lg transition-all"
+            >
+                重置清空
+            </button>
+        </div>
+
+        <!-- 統計摘要 -->
+        <div id="statsSection" class="hidden grid grid-cols-1 sm:grid-cols-4 gap-4 mb-8">
+            <div class="bg-green-50 p-4 rounded-xl border border-green-100 text-center">
+                <div class="text-green-600 text-xs font-semibold uppercase">上升</div>
+                <div id="statUp" class="text-2xl font-bold text-green-700">0</div>
+            </div>
+            <div class="bg-red-50 p-4 rounded-xl border border-red-100 text-center">
+                <div class="text-red-600 text-xs font-semibold uppercase">下降</div>
+                <div id="statDown" class="text-2xl font-bold text-red-700">0</div>
+            </div>
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 text-center">
+                <div class="text-slate-600 text-xs font-semibold uppercase">持平</div>
+                <div id="statEqual" class="text-2xl font-bold text-slate-700">0</div>
+            </div>
+            <div class="bg-amber-50 p-4 rounded-xl border border-amber-200 text-center ring-2 ring-amber-400 animate-pulse">
+                <div class="text-amber-700 text-xs font-semibold uppercase">重大變動 ($\ge 2$級)</div>
+                <div id="statJump" class="text-2xl font-bold text-amber-800">0</div>
+            </div>
+        </div>
+
+        <!-- 結果表格 -->
+        <div id="resultContainer" class="hidden overflow-hidden bg-white rounded-2xl shadow-xl border border-slate-200 mb-10">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50 border-b border-slate-200">
+                            <th class="px-4 py-4 text-xs font-bold text-slate-500 uppercase">序號</th>
+                            <th class="px-4 py-4 text-xs font-bold text-slate-500 uppercase text-center">原始分數</th>
+                            <th class="px-4 py-4 text-xs font-bold text-slate-500 uppercase text-center">原始等級</th>
+                            <th class="px-4 py-4 text-xs font-bold text-slate-500 uppercase text-center">最新分數</th>
+                            <th class="px-4 py-4 text-xs font-bold text-slate-500 uppercase text-center">最新等級</th>
+                            <th class="px-4 py-4 text-xs font-bold text-slate-500 uppercase text-center">趨勢</th>
+                            <th class="px-4 py-4 text-xs font-bold text-slate-500 uppercase text-center">幅度</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultBody" class="divide-y divide-slate-100">
+                        <!-- 動態生成 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 空狀態 -->
+        <div id="emptyPlaceholder" class="py-20 text-center text-slate-400 border-2 border-dashed border-slate-200 rounded-2xl">
+            <p>請輸入分數數據以進行分析</p>
+        </div>
+    </div>
+
+    <script>
+        // 等級定義與順序
+        const GRADE_ORDER = ["D*", "C", "C+", "B-", "B", "B+", "A-", "A"];
+        
+        function getGrade(score) {
+            if (isNaN(score)) return "-";
+            if (score >= 90) return "A";
+            if (score >= 85) return "A-";
+            if (score >= 80) return "B+";
+            if (score >= 75) return "B";
+            if (score >= 70) return "B-";
+            if (score >= 65) return "C+";
+            if (score >= 60) return "C";
+            return "D*";
+        }
+
+        function getGradeIndex(grade) {
+            return GRADE_ORDER.indexOf(grade);
+        }
+
+        const leftInput = document.getElementById('leftInput');
+        const rightInput = document.getElementById('rightInput');
+        const leftCount = document.getElementById('leftCount');
+        const rightCount = document.getElementById('rightCount');
+
+        const updateCounts = () => {
+            leftCount.innerText = `${leftInput.value.split('\n').filter(l => l.trim() !== '').length} 筆`;
+            rightCount.innerText = `${rightInput.value.split('\n').filter(l => l.trim() !== '').length} 筆`;
+        };
+
+        leftInput.addEventListener('input', updateCounts);
+        rightInput.addEventListener('input', updateCounts);
+
+        function clearAll() {
+            leftInput.value = '';
+            rightInput.value = '';
+            updateCounts();
+            document.getElementById('resultContainer').classList.add('hidden');
+            document.getElementById('statsSection').classList.add('hidden');
+            document.getElementById('emptyPlaceholder').classList.remove('hidden');
+        }
+
+        function compareScores() {
+            const leftData = leftInput.value.split('\n').map(v => v.trim()).filter(v => v !== '');
+            const rightData = rightInput.value.split('\n').map(v => v.trim()).filter(v => v !== '');
+
+            if (leftData.length === 0 && rightData.length === 0) return;
+
+            const maxLength = Math.max(leftData.length, rightData.length);
+            const resultBody = document.getElementById('resultBody');
+            resultBody.innerHTML = '';
+
+            let upCount = 0, downCount = 0, equalCount = 0, jumpCount = 0;
+
+            for (let i = 0; i < maxLength; i++) {
+                const valA = parseFloat(leftData[i]) || 0;
+                const valB = parseFloat(rightData[i]) || 0;
+                
+                const gradeA = getGrade(valA);
+                const gradeB = getGrade(valB);
+                
+                const indexA = getGradeIndex(gradeA);
+                const indexB = getGradeIndex(gradeB);
+                const gradeJump = indexB - indexA; // 正數代表進步，負數代表退步
+                const isBigJump = Math.abs(gradeJump) >= 2;
+
+                const scoreDiff = valB - valA;
+                let trendText = '';
+                let colorClass = '';
+                let bgClass = isBigJump ? 'jump-alert' : '';
+
+                if (scoreDiff > 0) {
+                    trendText = '上升';
+                    colorClass = 'text-green-600';
+                    upCount++;
+                } else if (scoreDiff < 0) {
+                    trendText = '下降';
+                    colorClass = 'text-red-600';
+                    downCount++;
+                } else {
+                    trendText = '持平';
+                    colorClass = 'text-slate-400';
+                    equalCount++;
+                }
+
+                if (isBigJump) jumpCount++;
+
+                const row = document.createElement('tr');
+                row.className = `transition-colors ${bgClass}`;
+                row.innerHTML = `
+                    <td class="px-4 py-4 text-xs text-slate-400 font-mono">${i + 1}</td>
+                    <td class="px-4 py-4 text-center font-medium text-slate-600">${leftData[i] || '0'}</td>
+                    <td class="px-4 py-4 text-center font-bold text-slate-800">${gradeA}</td>
+                    <td class="px-4 py-4 text-center font-medium text-slate-600">${rightData[i] || '0'}</td>
+                    <td class="px-4 py-4 text-center font-bold text-slate-800">${gradeB}</td>
+                    <td class="px-4 py-4 text-center">
+                        <div class="flex flex-col items-center">
+                            <span class="text-xs font-bold ${colorClass}">${trendText}</span>
+                            ${isBigJump ? '<span class="text-[10px] bg-amber-500 text-white px-1.5 rounded-sm mt-1">⚠️ 重大變動</span>' : ''}
+                        </div>
+                    </td>
+                    <td class="px-4 py-4 text-center font-bold ${colorClass}">
+                        ${scoreDiff > 0 ? '+' : ''}${scoreDiff.toFixed(1)}
+                        <div class="text-[10px] font-normal opacity-70">${gradeJump > 0 ? '+' : ''}${gradeJump} 級</div>
+                    </td>
+                `;
+                resultBody.appendChild(row);
+            }
+
+            document.getElementById('statUp').innerText = upCount;
+            document.getElementById('statDown').innerText = downCount;
+            document.getElementById('statEqual').innerText = equalCount;
+            document.getElementById('statJump').innerText = jumpCount;
+
+            document.getElementById('resultContainer').classList.remove('hidden');
+            document.getElementById('statsSection').classList.remove('hidden');
+            document.getElementById('emptyPlaceholder').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>

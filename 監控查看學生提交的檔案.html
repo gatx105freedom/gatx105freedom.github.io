@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>本地檔案搜尋器</title>
+    <style>
+        /* 1. 將整體基礎字體放大 */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1000px; /* 放寬版面以容納較大的字體 */
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+            font-size: 18px; 
+        }
+        .controls {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .input-group {
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px; /* 元件之間的間距 */
+        }
+        /* 放大按鈕與輸入框 */
+        button {
+            padding: 12px 24px;
+            font-size: 18px;
+            font-weight: bold;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        input[type="text"] {
+            padding: 12px;
+            width: 400px;
+            font-size: 18px;
+            border: 2px solid #ccc;
+            border-radius: 6px;
+        }
+        input[type="text"]:focus {
+            border-color: #007bff;
+            outline: none;
+        }
+        .status {
+            margin-top: 15px;
+            color: #555;
+            font-size: 1.1em;
+        }
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        /* 放大檔案列表的字體與間距 */
+        .file-item {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-family: monospace;
+            font-size: 18px;
+            padding: 8px;
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+        }
+        /* 放大日誌文字 */
+        .log-area {
+            margin-bottom: 20px;
+            font-weight: bold;
+            font-size: 1.2em;
+            color: #333;
+            line-height: 1.5;
+        }
+        #dirName {
+            font-size: 1.1em;
+            color: #0056b3;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="controls">
+        <h2>📂 本地檔案搜尋器</h2>
+        <div class="input-group">
+            <button id="selectDirBtn">選擇要搜索的資料夾</button>
+            <span id="dirName" style="font-style: italic;">未選擇資料夾...</span>
+        </div>
+        <div class="input-group">
+            <input type="text" id="searchInput" placeholder="輸入要搜尋的檔名關鍵字...">
+            <button id="toggleSearchBtn" disabled>開始自動搜尋</button>
+        </div>
+        <div class="status" id="statusText">系統待命中...</div>
+    </div>
+
+    <div class="log-area" id="logText"></div>
+    <div class="results-grid" id="resultsGrid">
+        <!-- 搜尋結果將會動態生成在這裡 -->
+    </div>
+
+    <script>
+        let directoryHandle;
+        let searchInterval;
+        let isSearching = false;
+
+        const selectDirBtn = document.getElementById('selectDirBtn');
+        const toggleSearchBtn = document.getElementById('toggleSearchBtn');
+        const searchInput = document.getElementById('searchInput');
+        const dirNameDisplay = document.getElementById('dirName');
+        const resultsGrid = document.getElementById('resultsGrid');
+        const statusText = document.getElementById('statusText');
+        const logText = document.getElementById('logText');
+
+        // 選擇資料夾
+        selectDirBtn.addEventListener('click', async () => {
+            try {
+                // 2. 加入 id 屬性：讓瀏覽器記住上次開啟的路徑位置
+                directoryHandle = await window.showDirectoryPicker({
+                    id: 'student-files-search-folder', // 瀏覽器會依據這個 ID 記憶最後存取的位置
+                    mode: 'read'
+                });
+                dirNameDisplay.textContent = `已選擇: ${directoryHandle.name}`;
+                toggleSearchBtn.disabled = false;
+                
+                // 選擇資料夾後，如果焦點不在輸入框，自動將焦點移過去方便打字
+                searchInput.focus();
+            } catch (err) {
+                console.error("選擇資料夾失敗:", err);
+                if (err.name !== 'AbortError') { // 忽略使用者自己取消選擇的錯誤
+                    statusText.textContent = "未選擇資料夾，或瀏覽器不支援此功能。";
+                }
+            }
+        });
+
+        // 切換自動搜尋狀態
+        toggleSearchBtn.addEventListener('click', () => {
+            if (isSearching) {
+                stopSearch();
+            } else {
+                startSearch();
+            }
+        });
+
+        // 監聽 Enter 鍵，方便使用者打完字直接按 Enter 開始
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !toggleSearchBtn.disabled && !isSearching) {
+                startSearch();
+            }
+        });
+
+        function startSearch() {
+            if (!searchInput.value.trim()) {
+                alert("請先輸入搜尋關鍵字！");
+                return;
+            }
+            
+            isSearching = true;
+            toggleSearchBtn.textContent = "停止搜尋";
+            toggleSearchBtn.style.backgroundColor = "#dc3545"; // 紅色
+            searchInput.disabled = true;
+            
+            // 立即執行一次，然後設定每 5 秒執行一次
+            performSearch();
+            searchInterval = setInterval(performSearch, 5000);
+        }
+
+        function stopSearch() {
+            isSearching = false;
+            toggleSearchBtn.textContent = "開始自動搜尋";
+            toggleSearchBtn.style.backgroundColor = "#007bff"; // 恢復藍色
+            searchInput.disabled = false;
+            clearInterval(searchInterval);
+            statusText.textContent = "搜尋已由使用者停止 (Search stopped by user)。";
+        }
+
+        // 遞迴讀取資料夾內的所有檔案
+        async function getFilesRecursively(dirHandle) {
+            let files = [];
+            for await (const entry of dirHandle.values()) {
+                if (entry.kind === 'file') {
+                    files.push(entry.name);
+                } else if (entry.kind === 'directory') {
+                    // 如果檔案結構很深，這裡會遞迴往下找
+                    const subFiles = await getFilesRecursively(entry);
+                    files.push(...subFiles);
+                }
+            }
+            return files;
+        }
+
+        // 執行搜尋邏輯
+        async function performSearch() {
+            const searchString = searchInput.value.toLowerCase();
+            statusText.textContent = `搜尋中... 最後更新時間: ${new Date().toLocaleTimeString()}`;
+            logText.textContent = `Performing search for files containing '${searchString}' in '${directoryHandle.name}'...`;
+
+            try {
+                // 獲取所有檔案名稱
+                const allFiles = await getFilesRecursively(directoryHandle);
+                
+                // 過濾包含指定字串的檔案 (不分大小寫)
+                let matchedFiles = allFiles.filter(file => file.toLowerCase().includes(searchString));
+
+                // 自然排序邏輯
+                const collator = new Intl.Collator(undefined, {numeric: true, sensitivity: 'base'});
+                matchedFiles.sort(collator.compare);
+
+                // 顯示結果
+                resultsGrid.innerHTML = ''; // 清空上一次結果
+                
+                if (matchedFiles.length > 0) {
+                    logText.textContent += ` Found ${matchedFiles.length} file(s):`;
+                    matchedFiles.forEach(file => {
+                        const div = document.createElement('div');
+                        div.className = 'file-item';
+                        div.textContent = file;
+                        div.title = file; // 滑鼠懸浮可看完整檔名
+                        resultsGrid.appendChild(div);
+                    });
+                } else {
+                    logText.textContent += ` No files found.`;
+                }
+
+            } catch (err) {
+                console.error("搜尋過程中發生錯誤:", err);
+                statusText.textContent = "讀取檔案時發生錯誤。可能權限遺失，請重新選擇資料夾。";
+                stopSearch();
+            }
+        }
+    </script>
+</body>
+</html>

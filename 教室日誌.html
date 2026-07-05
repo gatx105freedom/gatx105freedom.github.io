@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>教室日誌 - 手動輸入生成器</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f4f7f6;
+            color: #333;
+        }
+        .container {
+            width: 100%;
+            max-width: 650px;
+            padding: 30px;
+            background-color: #fff;
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+            box-sizing: border-box;
+            margin: 20px;
+        }
+        h1 {
+            font-size: 24px;
+            color: #2c3e50;
+            text-align: center;
+            margin-top: 0;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f1c40f;
+        }
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group.full-width {
+            grid-column: span 2;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+            font-size: 14px;
+        }
+        input[type="text"],
+        input[type="date"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 12px;
+            box-sizing: border-box;
+            border: 1px solid #dce1e6;
+            border-radius: 6px;
+            font-size: 15px;
+            transition: border-color 0.3s;
+            background-color: #fafbfc;
+        }
+        input[type="text"]:focus,
+        input[type="date"]:focus,
+        select:focus,
+        textarea:focus {
+            border-color: #3498db;
+            outline: none;
+            background-color: #fff;
+        }
+        textarea {
+            resize: vertical;
+            height: 90px;
+            font-family: inherit;
+        }
+        button {
+            width: 100%;
+            padding: 14px;
+            font-size: 16px;
+            font-weight: bold;
+            color: #fff;
+            background-color: #3498db;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background-color 0.3s, transform 0.1s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        button:active {
+            transform: scale(0.98);
+        }
+        .output-group {
+            margin-top: 25px;
+            border-top: 1px dashed #ccc;
+            padding-top: 20px;
+        }
+        #outputSql {
+            height: 130px;
+            background-color: #282c34;
+            color: #abb2bf;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+            border: none;
+        }
+        .message-area {
+            display: none;
+            margin-top: 20px;
+            padding: 12px;
+            border-radius: 6px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 15px;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        .msg-success {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+            border: 1px solid #c8e6c9;
+        }
+        .msg-error {
+            background-color: #ffebee;
+            color: #c62828;
+            border: 1px solid #ffcdd2;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* 響應式設計：小螢幕時改為單欄位 */
+        @media (max-width: 500px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            .form-group.full-width {
+                grid-column: span 1;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>教室日誌單筆生成器</h1>
+
+    <div class="form-grid">
+        <div class="form-group">
+            <label for="inputDate">日期</label>
+            <input type="date" id="inputDate">
+        </div>
+
+        <div class="form-group">
+            <label for="inputLesson">節次</label>
+            <select id="inputLesson">
+                <option value="1">第 1 節 (08:35-09:20)</option>
+                <option value="2">第 2 節 (09:20-10:20)</option>
+                <option value="3">第 3 節 (10:20-11:05)</option>
+                <option value="4">第 4 節 (11:05-11:50)</option>
+                <option value="5">第 5 節 (11:50-13:00)</option>
+                <option value="6">第 6 節 (14:00-15:05)</option>
+                <option value="7">第 7 節 (15:05-15:50)</option>
+                <option value="8">第 8 節 (15:50-18:00)</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>班級</label>
+            <div style="display: flex; gap: 10px;">
+                <select id="inputClassGrade">
+                    <option value="S1">S1</option>
+                    <option value="S2">S2</option>
+                    <option value="S3">S3</option>
+                    <option value="S4">S4</option>
+                    <option value="S5">S5</option>
+                    <option value="S6" selected>S6</option>
+                </select>
+                <select id="inputClassLetter">
+                    <option value="A">A</option>
+                    <option value="B">B</option>
+                    <option value="C" selected>C</option>
+                    <option value="D">D</option>
+                    <option value="E">E</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="inputTeacher">授課教師</label>
+            <input type="text" id="inputTeacher" value="李少明">
+        </div>
+
+        <div class="form-group">
+            <label for="inputWeekNum">周次</label>
+            <input type="number" id="inputWeekNum" value="32" placeholder="將根據日期自動計算">
+        </div>
+
+        <div class="form-group">
+            <label for="inputSubject">科目名稱</label>
+            <input type="text" id="inputSubject" value="電腦" placeholder="例如：電腦">
+        </div>
+    </div>
+
+    <div class="form-group full-width">
+        <label for="inputContent">教學內容</label>
+        <textarea id="inputContent" placeholder="請輸入本次上課內容..."></textarea>
+    </div>
+
+    <div class="form-group full-width">
+        <label for="inputAbsentees">缺席學生學號（分行輸入）</label>
+        <textarea id="inputAbsentees" placeholder="例如：&#10;11001&#10;11002&#10;11003"></textarea>
+    </div>
+
+    <button id="generateBtn">生成 SQL 並傳送至 Google Sheet</button>
+
+    <div id="messageArea" class="message-area"></div>
+
+    <div class="output-group">
+        <label for="outputSql">生成的 SQL 語句：</label>
+        <textarea id="outputSql" readonly placeholder="產生的 SQL 會顯示在這裡..."></textarea>
+    </div>
+</div>
+
+<script>
+    // 網頁載入時，自動將日期預設為今天，並根據時間設定節次
+    document.addEventListener('DOMContentLoaded', () => {
+        // 設定今天日期
+        const today = new Date().toISOString().split('T')[0];
+        const dateInput = document.getElementById('inputDate');
+        dateInput.value = today;
+
+        // 計算並設定對應周次 (4月6日為起點，第32周)
+        function updateWeekNum() {
+            // 使用 UTC 時間避免時區或日光節約時間的誤差
+            const baseDate = new Date('2026-04-06T00:00:00Z');
+            const targetDate = new Date(dateInput.value + 'T00:00:00Z');
+            
+            // 計算相差天數
+            const diffDays = Math.floor((targetDate - baseDate) / (1000 * 60 * 60 * 24));
+            
+            // 每 7 天為一周，向下取整數後加上基準周次 32
+            const weekNum = 32 + Math.floor(diffDays / 7);
+            document.getElementById('inputWeekNum').value = weekNum;
+        }
+
+        // 初始執行一次，並在日期改變時自動重新計算
+        updateWeekNum();
+        dateInput.addEventListener('change', updateWeekNum);
+
+        // 自動判斷當前節次
+        const now = new Date();
+        const minutes = now.getHours() * 60 + now.getMinutes(); // 將當前時間換算成分鐘數
+        let currentLesson = "1"; // 預設
+
+        // 依據時間區間設定對應的節次值
+        if (minutes < 9 * 60 + 20) { 
+            currentLesson = "1"; // 09:20 以前歸在第1節
+        } else if (minutes >= 9 * 60 + 20 && minutes < 10 * 60 + 20) { 
+            currentLesson = "2"; 
+        } else if (minutes >= 10 * 60 + 20 && minutes < 11 * 60 + 5) { 
+            currentLesson = "3"; 
+        } else if (minutes >= 11 * 60 + 5 && minutes < 11 * 60 + 50) { 
+            currentLesson = "4"; 
+        } else if (minutes >= 11 * 60 + 50 && minutes < 14 * 60) { 
+            currentLesson = "5"; // 11:50 到 14:00 都歸在第5節 
+        } else if (minutes >= 14 * 60 && minutes < 15 * 60 + 5) { 
+            currentLesson = "6"; 
+        } else if (minutes >= 15 * 60 + 5 && minutes < 15 * 60 + 50) { 
+            currentLesson = "7"; 
+        } else if (minutes >= 15 * 60 + 50) { 
+            currentLesson = "8"; // 15:50 以後歸在第8節
+        }
+
+        document.getElementById('inputLesson').value = currentLesson;
+    });
+
+    // 建立一個穩健的剪貼簿複製函數（兼容 iframe 環境）
+    function copyToClipboard(text) {
+        if (navigator.clipboard && window.isSecureContext) {
+            return navigator.clipboard.writeText(text);
+        } else {
+            // 退回使用舊版 execCommand 方案
+            let textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            textArea.style.left = "-999999px";
+            textArea.style.top = "-999999px";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            return new Promise((resolve, reject) => {
+                const successful = document.execCommand('copy');
+                textArea.remove();
+                if (successful) {
+                    resolve();
+                } else {
+                    reject(new Error('Copy command failed'));
+                }
+            });
+        }
+    }
+
+    // 顯示提示訊息的函數
+    function showMessage(text, isError = false) {
+        const msgBox = document.getElementById('messageArea');
+        msgBox.textContent = text;
+        msgBox.className = 'message-area ' + (isError ? 'msg-error' : 'msg-success');
+        msgBox.style.display = 'block';
+        
+        // 3秒後自動隱藏
+        setTimeout(() => {
+            msgBox.style.display = 'none';
+        }, 3500);
+    }
+
+    // 點擊生成按鈕的事件處理
+    document.getElementById('generateBtn').addEventListener('click', async () => {
+        // 取得表單輸入的值
+        const date = document.getElementById('inputDate').value;
+        const lesson = document.getElementById('inputLesson').value;
+        const className = document.getElementById('inputClassGrade').value + document.getElementById('inputClassLetter').value;
+        const weekNum = document.getElementById('inputWeekNum').value.trim() || '0';
+        const subject = document.getElementById('inputSubject').value.trim();
+        const teacher = document.getElementById('inputTeacher').value.trim();
+        let content = document.getElementById('inputContent').value.trim();
+        const absenteesRaw = document.getElementById('inputAbsentees').value.trim();
+
+        // 處理缺席學生資料 (過濾掉空白行，並用逗號連接)
+        const absenteesList = absenteesRaw.split('\n').map(id => id.trim()).filter(id => id !== '');
+        const absenteesString = absenteesList.join(', ');
+
+        // 輸入防呆檢查
+        if (!date || !className || !subject || !content || !teacher) {
+            showMessage('⚠️ 請確認「日期、班級、科目、教師、教學內容」都已填寫！', true);
+            return;
+        }
+
+        // 清理教學內容中的換行符號 (避免 SQL 語法錯誤)
+        content = content.replace(/\n|\r/g, ' ');
+
+        // 取得當前時間 (HH:mm 格式)
+        const now = new Date();
+        const timeString = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+
+        // 組合 INSERT 語法 (對齊您的目標 SQL 格式)
+        const sqlInsert = `insert into sec_teacher_subject values (${weekNum}, '', '${date}', '${lesson}', '${subject}', '${content}', '', '', '', '', '', '', '${timeString}', '${teacher}', null, '${className}', '', (Select MAX(ID) from sec_teacher_subject)+ 1);\n`;
+        
+        // 組合 UPDATE 語法
+        const sqlUpdate = `update score_sec set score${lesson} = 8 where date = '${date}' and class_name = '${className}';\n`;
+
+        // 合併結果
+        const finalSql = sqlInsert + sqlUpdate;
+
+        // 顯示在畫面的 textarea 中
+        const outputField = document.getElementById('outputSql');
+        outputField.value = finalSql;
+
+        // 【您的 Google Apps Script 網址】
+        const gasUrl = "https://script.google.com/a/macros/asum.edu.mo/s/AKfycbzZpN8XupuzE-CTLJ85kPKEr-pCv1IrT4BD9I1CDqvr_V9Z6W-pC9o1N0Gw8u3wpKAT/exec";
+        
+        const btn = document.getElementById('generateBtn');
+        const originalBtnText = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = "資料處理與傳送中...";
+
+        // 嘗試寫入剪貼簿與傳送資料至 Google Sheet
+        try {
+            await copyToClipboard(finalSql);
+            
+            // 檢查是否有填寫 GAS 的網址
+            if (gasUrl.startsWith('http')) {
+                // 準備傳送給 Google Sheet 的資料表單
+                const formData = new URLSearchParams();
+                formData.append('date', date);
+                formData.append('lesson', lesson);
+                formData.append('className', className);
+                formData.append('subjectCode', weekNum);     // 傳送周次 (為了不讓您重新部署 GAS，這裡沿用原本的 subjectCode 參數名)
+                formData.append('subject', subject);         // 加入科目名稱
+                formData.append('teacher', teacher);
+                formData.append('content', content);
+                formData.append('absentees', absenteesString); // 加入缺席學生
+                formData.append('sql', finalSql);              // 加入生成的 SQL
+
+                // 傳送到 Google Apps Script (使用 no-cors 避免跨網域錯誤)
+                await fetch(gasUrl, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    body: formData
+                });
+                
+                showMessage('✅ 完成！SQL 已複製，資料與缺席紀錄已傳送至 Google Sheet。');
+            } else {
+                showMessage('✅ 完成！SQL 已複製。(注意：尚未設定 Google Sheet 網址，目前未傳送)');
+            }
+        } catch (err) {
+            console.error('複製或傳送失敗:', err);
+            showMessage('⚠️ 發生錯誤，可能是瀏覽器阻擋。請手動複製下方文字框內容。', true);
+        } finally {
+            // 恢復按鈕狀態
+            btn.disabled = false;
+            btn.textContent = originalBtnText;
+        }
+    });
+</script>
+
+</body>
+</html>
